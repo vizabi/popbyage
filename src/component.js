@@ -316,7 +316,6 @@ const PopByAge = Component.extend({
 
     _this._createLimits();
     _this._updateLimits();
-    //_this._createStepData(_this.model.marker.axis_x);
 
     _this.resize();
     _this._updateEntities(true);
@@ -411,28 +410,25 @@ const PopByAge = Component.extend({
     const _this = this;
     this.translator = this.model.locale.getTFunction();
 
-    const titleStringX = this.model.marker.axis_x.getConceptprops().name;
-
     const xTitle = this.xTitleEl.selectAll("text").data([0]);
     xTitle.enter().append("text");
     xTitle
-      .text(titleStringX)
       .on("click", () => {
-      _this.parent
-      .findChildByName("gapminder-treemenu")
-      .markerID("axis_x")
-      .alignX(_this.model.locale.isRTL() ? "right" : "left")
-      .alignY("top")
-      .updateView()
-      .toggle();
-  });
+        _this.parent
+          .findChildByName("gapminder-treemenu")
+          .markerID("axis_x")
+          .alignX(_this.model.locale.isRTL() ? "right" : "left")
+          .alignY("top")
+          .updateView()
+          .toggle();
+      });
 
     utils.setIcon(this.xInfoEl, iconQuestion)
       .select("svg").attr("width", "0px").attr("height", "0px");
 
     this.xInfoEl.on("click", () => {
       _this.parent.findChildByName("gapminder-datanotes").pin();
-  });
+    });
     this.xInfoEl.on("mouseover", function() {
       if (_this.model.time.dragging) return;
       const rect = this.getBBox();
@@ -562,10 +558,12 @@ const PopByAge = Component.extend({
         let ageSum = 0;
         const sideMaxLimits = [];
         utils.forEach(_this.ageKeys, age => {
+          let stackSum = 0;
           if (limits[age] && limits[age][time]) {
-            ageSum = limits[age][time].max;
+            stackSum += limits[age][time].max;
+            ageSum += stackSum;
           }
-          sideMaxLimits.push(ageSum);
+          sideMaxLimits.push(stackSum);
         });
         totals[time][sideKeysNF[0]] = ageSum;
         const maxSideLimit = Math.max(...sideMaxLimits);
@@ -1142,9 +1140,7 @@ const PopByAge = Component.extend({
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
       .attr("transform", "translate(" + (isRTL ? this.width : margin.left * 0.4) + "," + (margin.top * 0.4) + ")");
-    // this.xTitleEl.select("text")
-    //   .attr('x', margin.left / 2)
-    //   .attr('y', margin.top / 2);
+    this.xTitleEl.select("text").text(this.model.marker.axis_x.getConceptprops().name);
 
     if (this.xInfoEl.select("svg").node()) {
       const titleBBox = this.xTitleEl.node().getBBox();
