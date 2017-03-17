@@ -1,5 +1,5 @@
 {
-  "main": "build/dist/agepyramidchart.js",
+  "main": "build/dist/popbyage.js",
   "scripts": {
     "link": "npm link ../vizabi",
     "build": "webpack --progress"
@@ -7,21 +7,21 @@
   "devDependencies": {
     "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler"
   },
-  "name": "vizabi-agepyramidchart",
-  "version": "1.0.0",
+  "name": "vizabi-popbyage",
+  "version": "1.1.0",
   "dependencies": {
     "vizabi": "^0.20.2-6"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vizabi/vizabi-agepyramidchart.git"
+    "url": "git+https://github.com/vizabi/vizabi-popbyage.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/vizabi/vizabi-agepyramidchart/issues"
+    "url": "https://github.com/vizabi/vizabi-popbyage/issues"
   },
-  "homepage": "https://github.com/vizabi/vizabi-agepyramidchart#readme",
+  "homepage": "https://github.com/vizabi/vizabi-popbyage#readme",
   "description": ""
 }

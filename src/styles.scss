@@ -4,7 +4,7 @@
 @import "~vizabi/src/assets/styles/chart";
 
 .vzb-tool {
-  .vzb-agepyramid {
+  .vzb-popbyage {
     @extend %vzb-chart-svg;
     .vzb-bc-axis-x,
     .vzb-bc-axis-y {
@@ -130,7 +130,7 @@
   }
   &.vzb-presentation {
 
-    .vzb-agepyramid {
+    .vzb-popbyage {
 
       .vzb-bc-axis-x,
       .vzb-bc-axis-y,

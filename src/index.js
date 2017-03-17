@@ -3,7 +3,7 @@ import component from "./component";
 
 
 //BAR CHART TOOL
-const AgePyramid = Vizabi.Tool.extend("AgePyramid", {
+const PopByAge = Vizabi.Tool.extend("PopByAge", {
 
   /**
    * Initializes the tool (Bar Chart Tool).
@@ -13,7 +13,7 @@ const AgePyramid = Vizabi.Tool.extend("AgePyramid", {
    */
   init(placeholder, external_model) {
 
-    this.name = "agepyramid";
+    this.name = "popbyage";
 
     //specifying components
     this.components = [{
@@ -74,4 +74,4 @@ const AgePyramid = Vizabi.Tool.extend("AgePyramid", {
 
 });
 
-export default AgePyramid;
+export default PopByAge;

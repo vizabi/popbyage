@@ -10,7 +10,7 @@ const {
 } = Vizabi;
 
 // POP BY AGE CHART COMPONENT
-const AgePyramid = Component.extend({
+const PopByAge = Component.extend({
 
   /**
    * Initializes the component (Bar Chart).
@@ -19,7 +19,7 @@ const AgePyramid = Component.extend({
    * @param {Object} context The component's parent
    */
   init(config, context) {
-    this.name = "agepyramid";
+    this.name = "popbyage";
     this.template = require("./template.html");
 
     //define expected models for this component
@@ -777,7 +777,7 @@ const AgePyramid = Component.extend({
       .attr("class", "vzb-bc-age")
       .merge(this.entityLabels)
       .each((d, i) => {
-      const yearOlds = _this.translator("agepyramid/yearOlds");
+      const yearOlds = _this.translator("popbyage/yearOlds");
 
     let age = parseInt(d[ageDim], 10);
 
@@ -1119,4 +1119,4 @@ const AgePyramid = Component.extend({
 
 });
 
-export default AgePyramid;
+export default PopByAge;
