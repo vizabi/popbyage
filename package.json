@@ -5,13 +5,14 @@
     "build": "webpack --progress"
   },
   "devDependencies": {
+    "compare-version": "^0.1.2",
+    "css.escape": "^1.5.1",
+    "shelljs": "^0.7.7",
+    "vizabi": "^0.20.2-24",
     "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler"
   },
   "name": "vizabi-popbyage",
   "version": "1.1.0",
-  "dependencies": {
-    "vizabi": "^0.20.2-6"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vizabi/vizabi-popbyage.git"
