@@ -2,10 +2,11 @@
   "main": "build/dist/popbyage.js",
   "scripts": {
     "link": "npm link ../vizabi",
-    "build": "webpack --progress"
+    "build": "cross-env NODE_ENV=production webpack --progress"
   },
   "devDependencies": {
     "compare-version": "^0.1.2",
+    "cross-env": "^3.2.4",
     "css.escape": "^1.5.1",
     "shelljs": "^0.7.7",
     "vizabi": "^0.20.2-24",
