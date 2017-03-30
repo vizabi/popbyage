@@ -58,10 +58,15 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
     //validate on first model set only
     if (!this.model) {
       const entities = model.state.entities;
+      const dimAllPossible = model.state.entities_allpossible.dim;
       if (Object.keys(entities.show).length > 0) {
         const show = {};
-        if (entities.show[entities.dim] && Object.keys(entities.show).length !== 1) {
-          show[entities.dim] = entities.show[entities.dim];
+        if (entities.show[entities.dim] && entities.show[entities.dim]["$in"]) {
+          show[entities.dim] = {};
+          show[entities.dim]["$in"] = entities.show[entities.dim]["$in"];
+        }
+        if (entities.dim !== dimAllPossible) {
+          show["is--" + dimAllPossible] = true;
         }
         if (!entities.show[entities.dim] || !(Object.keys(entities.show).length == 1)) {
           entities.show = show;
