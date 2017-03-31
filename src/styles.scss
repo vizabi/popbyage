@@ -24,12 +24,6 @@
       @extend %vzb-chart-axis-title;
     }
 
-    .vzb-bc-axis-x-left {
-      g:nth-last-of-type(2) {
-        visibility: hidden;
-      }
-    }
-
     .vzb-bc-bar {
       stroke: none;
       cursor: pointer;

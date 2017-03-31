@@ -36,6 +36,12 @@ const PopByAge = Component.extend({
       name: "entities_side",
       type: "entities"
     }, {
+      name: "entities_allpossible",
+      type: "entities"
+    }, {
+      name: "entities_geodomain",
+      type: "entities"
+    }, {
       name: "locale",
       type: "locale"
     }, {
@@ -62,10 +68,10 @@ const PopByAge = Component.extend({
           if (_this.timeSteps.filter(t => (t - _this.model.time.value) == 0).length) {
             _this.model.marker.getFrame(_this.model.time.value, frame => {
               _this.frame = frame;
-            _this.frameAxisX = frame.axis_x;
-            _this._updateEntities();
-            _this.updateBarsOpacity();
-          });
+              _this.frameAxisX = frame.axis_x;
+              _this._updateEntities();
+              _this.updateBarsOpacity();
+            });
           } else {
             const nextIndex = d3.bisectLeft(_this.timeSteps, _this.model.time.value);
             const prevFrameTime = _this.timeSteps[nextIndex - 1];
@@ -73,11 +79,11 @@ const PopByAge = Component.extend({
             const fraction = (_this.model.time.value - prevFrameTime) / (nextFrameTime - prevFrameTime);
             _this.model.marker.getFrame(nextFrameTime, nValues => {
               _this.model.marker.getFrame(prevFrameTime, pValues => {
-              _this.frameAxisX = _this.interpolateDiagonal(pValues.axis_x, nValues.axis_x, fraction);
-            _this._updateEntities();
-            _this.updateBarsOpacity();
-          });
-          });
+                _this.frameAxisX = _this.interpolateDiagonal(pValues.axis_x, nValues.axis_x, fraction);
+                _this._updateEntities();
+                _this.updateBarsOpacity();
+              });
+            });
           }
         }
         _this.snapped = false;
@@ -85,6 +91,7 @@ const PopByAge = Component.extend({
       "change:marker.select": function(evt) {
         _this.someSelected = (_this.model.marker.select.length > 0);
         _this.nonSelectedOpacityZero = false;
+        _this.updateBarsOpacity();
       },
       "change:marker.highlight": function(evt, path) {
         if (!_this._readyOnce) return;
@@ -104,9 +111,49 @@ const PopByAge = Component.extend({
         if (!_this._readyOnce) return;
         _this._updateEntities();
       },
+      "change:marker.color.which": function(evt) {
+        if (!_this._readyOnce) return;
+        let stackDim;
+        const show = {};
+        if (_this.model.marker.color.use == "constant") {
+          stackDim = null;
+        } else {
+          const colorConcept = _this.model.marker.color.getConceptprops();
+          if (colorConcept.concept_type == "entity_set") {
+            stackDim = colorConcept.domain;
+            show["is--" + _this.model.marker.color.which] = true;
+            const sideConcept = _this.model.marker.side.getConceptprops();
+            if (sideConcept.concept_type == "entity_set" && stackDim == sideConcept.domain && _this.model.marker.side.which !== _this.model.marker.color.which) {
+              _this.model.marker.side.setWhich({"concept" : _this.model.marker.color.which});
+            }          
+          } else {
+            stackDim = _this.model.marker.color.which;
+          }
+        }
+        _this.model.entities_geodomain.skipFilter = stackDim === _this.geoDomainDimension || _this.SIDEDIM === _this.geoDomainDimension;
+        _this.model.entities.set("show", show);
+        _this.model.entities.set("dim", stackDim);
+        _this.model.entities_allpossible.set("dim", _this.model.marker.color.which);
+      },
       "change:marker.side.which": function(evt) {
         if (!_this._readyOnce) return;
-        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
+        let sideDim;
+        if (_this.model.marker.side.use == "constant") {
+          sideDim = null;
+        } else {
+          const sideConcept = _this.model.marker.side.getConceptprops();
+          if (sideConcept.concept_type == "entity_set") {
+            sideDim = sideConcept.domain;
+            const colorConcept = _this.model.marker.color.getConceptprops();
+            if (colorConcept.concept_type == "entity_set" && sideDim == colorConcept.domain && _this.model.marker.color.which !== _this.model.marker.side.which) {
+              _this.model.marker.color.setWhich({"concept" : _this.model.marker.side.which});
+            }          
+          } else {
+            sideDim = _this.model.marker.side.which;
+          }
+        } 
+//        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
+        _this.model.entities_geodomain.skipFilter = sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension;
         _this.model.marker.side.clearSideState();
         _this.model.entities_side.clearShow();
         _this.model.entities_side.set("dim", sideDim);
@@ -115,13 +162,14 @@ const PopByAge = Component.extend({
         if (!_this._readyOnce) return;
         if (_this.model.entities.dim === _this.model.entities_side.dim
           && !utils.isEmpty(_this.model.entities.show)
+          && _this.model.entities.show[_this.model.entities.dim]
           && !utils.isEmpty(_this.model.entities_side.show)) {
           utils.forEach(_this.model.entities_side.getFilteredEntities(), s => {
             if (!_this.model.entities.isShown(s)) {
-            _this.model.marker.side.clearSideState();
-            _this.model.entities_side.showEntity(s);
-          }
-        });
+              _this.model.marker.side.clearSideState();
+              _this.model.entities_side.showEntity(s);
+            }
+          });
         }
       },
       "change:entities_side.show": function(evt) {
@@ -130,21 +178,22 @@ const PopByAge = Component.extend({
         let doReturn = false;
         let _entitiesSameDimWithSide = null;
         utils.forEach(_this.model.marker.side._space, h => {
-          if (h.dim === _this.model.entities_side.dim && h._name !== _this.model.entities_side._name) {
-          _entitiesSameDimWithSide = h;
-        }
-      });
-        if (_entitiesSameDimWithSide && !utils.isEmpty(_entitiesSameDimWithSide.show)) {
-          utils.forEach(_this.model.entities_side.getFilteredEntities(), s => {
-            if (!_entitiesSameDimWithSide.isShown(s)) {
-            _entitiesSameDimWithSide.showEntity(s);
-            doReturn = true;
+          if (h.dim === _this.model.entities_side.dim && h._name !== _this.model.entities_side._name && h._name !== _this.model.entities_geodomain._name) {
+            _entitiesSameDimWithSide = h;
           }
         });
+        if (_entitiesSameDimWithSide && !utils.isEmpty(_entitiesSameDimWithSide.show) && _entitiesSameDimWithSide.show[_entitiesSameDimWithSide.dim]) {
+          utils.forEach(_this.model.entities_side.getFilteredEntities(), s => {
+            if (!_entitiesSameDimWithSide.isShown(s)) {
+              _entitiesSameDimWithSide.showEntity(s);
+              doReturn = true;
+            }
+          });
         }
         if (doReturn) return;
 
         _this._updateIndicators();
+        if (!_this.model._ready || !_this.frame) return;
         _this._updateLimits();
         _this.resize();
         _this._updateEntities();
@@ -187,6 +236,16 @@ const PopByAge = Component.extend({
   //   this.model.marker_side.hook_total.set(obj);
   // },
 
+  checkDimensions() {
+    const stackDim = this.model.entities.dim;
+    const sideDim = this.model.entities_side.dim;
+
+    this.colorUseConstant = this.model.marker.color.use == "constant";
+    this.stackSkip = this.colorUseConstant || stackDim == sideDim;
+    this.geoLess = stackDim !== this.geoDomainDimension && sideDim !== this.geoDomainDimension;
+    this.sideSkip = this.model.marker.side.use == "constant";
+  },
+
   /**
    * DOM is ready
    */
@@ -213,6 +272,13 @@ const PopByAge = Component.extend({
     this.titleRight = this.element.select(".vzb-bc-title-right");
     this.year = this.element.select(".vzb-bc-year");
 
+    this.geoDomainDimension = this.model.entities_geodomain.getDimension();
+    this.geoDomainDefaultValue = this.model.entities_geodomain.show[this.geoDomainDimension]["$in"][0];
+
+    _this.someSelected = (_this.model.marker.select.length > 0);
+    _this.nonSelectedOpacityZero = false;
+
+
     this.on("resize", () => {
       _this._updateEntities();
   });
@@ -221,8 +287,14 @@ const PopByAge = Component.extend({
       _newWidth(d, i) {
         d["x_"] = 0;
         let width;
-        if (_this.stackSkip) {
-          width = d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[d[_this.PREFIXEDSIDEDIM]][d[_this.AGEDIM] + _this.ageShift] : 0;
+        if (_this.geoLess && _this.stackSkip && _this.sideSkip) {
+          width = (_this.frameAxisX[d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue];
+        } else if (_this.geoLess && _this.stackSkip) {
+          width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? (_this.frameAxisX[d[_this.PREFIXEDSIDEDIM]][d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue] : 0;
+        } else if (_this.geoLess && _this.sideSkip) {
+          width = (_this.frameAxisX[d[_this.PREFIXEDSTACKDIM]][d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue];
+        } else if (_this.stackSkip) {
+          width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[d[_this.PREFIXEDSIDEDIM]][d[_this.AGEDIM] + _this.ageShift] : 0;
         } else if (_this.sideSkip) {
           width = _this.frameAxisX[d[_this.PREFIXEDSTACKDIM]][d[_this.AGEDIM] + _this.ageShift];
         } else {
@@ -272,23 +344,22 @@ const PopByAge = Component.extend({
     this.AGEDIM = this.age.getDimension();
     this.TIMEDIM = this.model.time.getDimension();
     this.groupBy = this.age.grouping || 1;
-    this.stackSkip = this.STACKDIM == this.SIDEDIM;
-    this.sideSkip = _this.model.marker.side.use == "constant";
+    this.checkDimensions();
     this.updateUIStrings();
     this._updateIndicators();
 
+    this.frame = null;
     this.model.marker.getFrame(_this.model.time.value, frame => {
       _this.frame = frame;
-    _this.frameAxisX = frame.axis_x;
+      _this.frameAxisX = frame.axis_x;
 
-    _this._createLimits();
-    _this._updateLimits();
-    //_this._createStepData(_this.model.marker.axis_x);
+      _this._createLimits();
+      _this._updateLimits();
 
-    _this.resize();
-    _this._updateEntities(true);
-    _this.updateBarsOpacity();
-  });
+      _this.resize();
+      _this._updateEntities(true);
+      _this.updateBarsOpacity();
+    });
   },
 
   interpolateDiagonal(pValues, nValues, fraction) {
@@ -297,42 +368,79 @@ const PopByAge = Component.extend({
     let data;
     let val1, val2, shiftedAge;
     const groupBy = this.groupBy;
-    if (this.stackSkip) {
-      utils.forEach(_this.sideKeys, side => {
-        data = dataBetweenFrames[side] = {};
+    if (this.geoLess && this.stackSkip && this.sideSkip) {
+      data = dataBetweenFrames;
       utils.forEach(_this.ageKeys, age => {
         shiftedAge = +age + groupBy;
-      val1 = pValues[side][age];
-      val2 = nValues[side][shiftedAge] || 0;
-      data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-    });
-      data[0] = nValues[side][0] || 0;
-    });
+        val1 = pValues[age][_this.geoDomainDefaultValue];
+        val2 = (nValues[shiftedAge] || {})[_this.geoDomainDefaultValue] || 0;
+        data[shiftedAge] = {};
+        data[shiftedAge][_this.geoDomainDefaultValue] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+      });
+      data[0] = {};
+      data[0][_this.geoDomainDefaultValue] = nValues[0][_this.geoDomainDefaultValue] || 0;
+    } else if (this.stackSkip && this.geoLess) {
+      utils.forEach(_this.sideKeys, side => {
+        data = dataBetweenFrames[side] = {};
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          val1 = pValues[side][age][_this.geoDomainDefaultValue];
+          val2 = (nValues[side][shiftedAge] || {})[_this.geoDomainDefaultValue] || 0;
+          data[shiftedAge] = {};
+          data[shiftedAge][_this.geoDomainDefaultValue] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        data[0] = {};
+        data[0][_this.geoDomainDefaultValue] = nValues[side][0][_this.geoDomainDefaultValue] || 0;
+      });
+    } else if (this.stackSkip) {
+      utils.forEach(_this.sideKeys, side => {
+        data = dataBetweenFrames[side] = {};
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          val1 = pValues[side][age];
+          val2 = nValues[side][shiftedAge] || 0;
+          data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        data[0] = nValues[side][0] || 0;
+      });
+    } else if (this.sideSkip && this.geoLess) {
+      utils.forEach(_this.stackKeys, stack => {
+        data = dataBetweenFrames[stack] = {};
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          val1 = pValues[stack][age][_this.geoDomainDefaultValue];
+          val2 = (nValues[stack][shiftedAge] || {})[_this.geoDomainDefaultValue] || 0;
+          data[shiftedAge] = {};
+          data[shiftedAge][_this.geoDomainDefaultValue] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        data[0] = {};
+        data[0][_this.geoDomainDefaultValue] = nValues[stack][0][_this.geoDomainDefaultValue] || 0;
+      });
     } else if (this.sideSkip) {
       utils.forEach(_this.stackKeys, stack => {
         data = dataBetweenFrames[stack] = {};
-      utils.forEach(_this.ageKeys, age => {
-        shiftedAge = +age + groupBy;
-      val1 = pValues[stack][age];
-      val2 = nValues[stack][shiftedAge] || 0;
-      data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-    });
-      data[0] = nValues[stack][0] || 0;
-    });
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          val1 = pValues[stack][age];
+          val2 = nValues[stack][shiftedAge] || 0;
+          data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        data[0] = nValues[stack][0] || 0;
+      });
     } else {
       utils.forEach(_this.stackKeys, stack => {
         dataBetweenFrames[stack] = {};
-      utils.forEach(_this.sideKeys, side => {
-        data = dataBetweenFrames[stack][side] = {};
-      utils.forEach(_this.ageKeys, age => {
-        shiftedAge = +age + groupBy;
-      val1 = pValues[stack][side][age];
-      val2 = nValues[stack][side][shiftedAge] || 0;
-      data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-    });
-      data[0] = nValues[stack][side][0] || 0;
-    });
-    });
+        utils.forEach(_this.sideKeys, side => {
+          data = dataBetweenFrames[stack][side] = {};
+          utils.forEach(_this.ageKeys, age => {
+            shiftedAge = +age + groupBy;
+            val1 = pValues[stack][side][age];
+            val2 = nValues[stack][side][shiftedAge] || 0;
+            data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+          });
+          data[0] = nValues[stack][side][0] || 0;
+        });
+      });
     }
     return dataBetweenFrames;
   },
@@ -341,28 +449,25 @@ const PopByAge = Component.extend({
     const _this = this;
     this.translator = this.model.locale.getTFunction();
 
-    const titleStringX = this.model.marker.axis_x.getConceptprops().name;
-
     const xTitle = this.xTitleEl.selectAll("text").data([0]);
     xTitle.enter().append("text");
     xTitle
-      .text(titleStringX)
       .on("click", () => {
-      _this.parent
-      .findChildByName("gapminder-treemenu")
-      .markerID("axis_x")
-      .alignX(_this.model.locale.isRTL() ? "right" : "left")
-      .alignY("top")
-      .updateView()
-      .toggle();
-  });
+        _this.parent
+          .findChildByName("gapminder-treemenu")
+          .markerID("axis_x")
+          .alignX(_this.model.locale.isRTL() ? "right" : "left")
+          .alignY("top")
+          .updateView()
+          .toggle();
+      });
 
     utils.setIcon(this.xInfoEl, iconQuestion)
       .select("svg").attr("width", "0px").attr("height", "0px");
 
     this.xInfoEl.on("click", () => {
       _this.parent.findChildByName("gapminder-datanotes").pin();
-  });
+    });
     this.xInfoEl.on("mouseover", function() {
       if (_this.model.time.dragging) return;
       const rect = this.getBBox();
@@ -432,19 +537,19 @@ const PopByAge = Component.extend({
     const stacks = this.model.marker.getKeys(stackDim);
     const stackKeys = utils.without(stacks.map(m => {
         if (m[stackDim] == _this.totalFieldName) _this.dataWithTotal = true;
-    return m[stackDim];
-  }), this.totalFieldName);
+        return m[stackDim];
+      }), this.totalFieldName);
 
     let sortedStackKeys = utils.keys(this.model.marker.color.getPalette()).reduce((arr, val) => {
         if (stackKeys.indexOf(val) != -1) arr.push(val);
-    return arr;
-  }, []);
+        return arr;
+      }, []);
 
     if (sortedStackKeys.length != stackKeys.length) {
       sortedStackKeys = stackKeys.reduce((arr, val) => {
           if (arr.indexOf(val) == -1) arr.push(val);
-      return arr;
-    }, sortedStackKeys);
+          return arr;
+        }, sortedStackKeys);
     }
     this.stackKeys = sortedStackKeys;
     this.stackItems = this.model.marker.label_stack.getItems();
@@ -472,10 +577,11 @@ const PopByAge = Component.extend({
     const _this = this;
     const axisX = this.model.marker.axis_x;
 
-    const sideKeysNF = Object.keys(this.model.marker.side.getItems());
+    //const sideKeysNF = Object.keys(this.model.marker.side.getItems());
+    const sideKeysNF = Object.keys(this.model.marker.side.getNestedItems([this.SIDEDIM]));
     if (!sideKeysNF.length) sideKeysNF.push("undefined");
 
-    const keys = this.sideSkip ? [this.STACKDIM] : (this.stackSkip ? [this.SIDEDIM] : [this.STACKDIM, this.SIDEDIM]);
+    const keys = this.stackSkip && this.sideSkip ? [] : (this.sideSkip ? [this.STACKDIM] : (this.stackSkip ? [this.SIDEDIM] : [this.STACKDIM, this.SIDEDIM]));
     const limits = axisX.getLimitsByDimensions(keys.concat([this.AGEDIM, this.TIMEDIM]));
     const timeKeys = axisX.getUnique();
     const totals = {};
@@ -483,79 +589,97 @@ const PopByAge = Component.extend({
     const maxLimits = {};
     sideKeysNF.forEach(s => {
       maxLimits[s] = [];
-    inpercentMaxLimits[s] = [];
-  });
+      inpercentMaxLimits[s] = [];
+    });
 
-    if (_this.sideSkip) {
+    if (_this.stackSkip && _this.sideSkip) {
       utils.forEach(timeKeys, time => {
         totals[time] = {};
-      let ageSum = 0;
-      const sideMaxLimits = [];
-      utils.forEach(_this.ageKeys, age => {
-        let stackSum = 0;
-      utils.forEach(_this.stackKeys, stack => {
-        if (limits[stack] && limits[stack][age] && limits[stack][age][time]) {
-        stackSum += limits[stack][age][time].max;
-        ageSum += stackSum;
-      }
-    });
-      sideMaxLimits.push(stackSum);
-    });
-      totals[time][sideKeysNF[0]] = ageSum;
-      const maxSideLimit = Math.max(...sideMaxLimits);
-      inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
-      maxLimits[sideKeysNF[0]].push(maxSideLimit);
-    });
+        let ageSum = 0;
+        const sideMaxLimits = [];
+        utils.forEach(_this.ageKeys, age => {
+          let stackSum = 0;
+          if (limits[age] && limits[age][time]) {
+            stackSum += limits[age][time].max;
+            ageSum += stackSum;
+          }
+          sideMaxLimits.push(stackSum);
+        });
+        totals[time][sideKeysNF[0]] = ageSum;
+        const maxSideLimit = Math.max(...sideMaxLimits);
+        inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
+        maxLimits[sideKeysNF[0]].push(maxSideLimit);
+      });
+    } else if (_this.sideSkip) {
+      utils.forEach(timeKeys, time => {
+        totals[time] = {};
+        let ageSum = 0;
+        const sideMaxLimits = [];
+        utils.forEach(_this.ageKeys, age => {
+          let stackSum = 0;
+            utils.forEach(_this.stackKeys, stack => {
+              if (limits[stack] && limits[stack][age] && limits[stack][age][time]) {
+              stackSum += limits[stack][age][time].max;
+              ageSum += stackSum;
+            }
+          });
+          sideMaxLimits.push(stackSum);
+        });
+        totals[time][sideKeysNF[0]] = ageSum;
+        const maxSideLimit = Math.max(...sideMaxLimits);
+        inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
+        maxLimits[sideKeysNF[0]].push(maxSideLimit);
+      });
     } else if (_this.stackSkip) {
       utils.forEach(timeKeys, time => {
         totals[time] = {};
-      utils.forEach(sideKeysNF, side => {
-        let ageSum = 0;
-      const sideMaxLimits = [];
-      utils.forEach(_this.ageKeys, age => {
-        let stackSum = 0;
-      if (limits[side] && limits[side][age] && limits[side][age][time]) {
-        stackSum += limits[side][age][time].max;
-        ageSum += stackSum;
-      }
-      sideMaxLimits.push(stackSum);
-    });
-      totals[time][side] = ageSum;
-      const maxSideLimit = Math.max(...sideMaxLimits);
-      inpercentMaxLimits[side].push(maxSideLimit / ageSum);
-      maxLimits[side].push(maxSideLimit);
-    });
-    });
+        utils.forEach(sideKeysNF, side => {
+          let ageSum = 0;
+          const sideMaxLimits = [];
+          utils.forEach(_this.ageKeys, age => {
+            let stackSum = 0;
+            if (limits[side] && limits[side][age] && limits[side][age][time]) {
+              stackSum += limits[side][age][time].max;
+              ageSum += stackSum;
+            }
+            sideMaxLimits.push(stackSum);
+          });
+          totals[time][side] = ageSum;
+          const maxSideLimit = Math.max(...sideMaxLimits);
+          inpercentMaxLimits[side].push(maxSideLimit / ageSum);
+          maxLimits[side].push(maxSideLimit);
+        });
+      });
     } else {
       utils.forEach(timeKeys, time => {
         totals[time] = {};
-      utils.forEach(sideKeysNF, side => {
-        let ageSum = 0;
-      const sideMaxLimits = [];
-      utils.forEach(_this.ageKeys, age => {
-        let stackSum = 0;
-      utils.forEach(_this.stackKeys, stack => {
-        if (limits[stack][side] && limits[stack][side][age] && limits[stack][side][age][time]) {
-        stackSum += limits[stack][side][age][time].max;
-        ageSum += stackSum;
-      }
-    });
-      sideMaxLimits.push(stackSum);
-    });
-      totals[time][side] = ageSum;
-      const maxSideLimit = Math.max(...sideMaxLimits);
-      inpercentMaxLimits[side].push(maxSideLimit / ageSum);
-      maxLimits[side].push(maxSideLimit);
-    });
-    });
+        utils.forEach(sideKeysNF, side => {
+          let ageSum = 0;
+          const sideMaxLimits = [];
+          utils.forEach(_this.ageKeys, age => {
+            let stackSum = 0;
+            utils.forEach(_this.stackKeys, stack => {
+              if (limits[stack][side] && limits[stack][side][age] && limits[stack][side][age][time]) {
+                stackSum += limits[stack][side][age][time].max;
+                ageSum += stackSum;
+              }
+            });
+            sideMaxLimits.push(stackSum);
+          });
+          totals[time][side] = ageSum;
+          const maxSideLimit = Math.max(...sideMaxLimits);
+          inpercentMaxLimits[side].push(maxSideLimit / ageSum);
+          maxLimits[side].push(maxSideLimit);
+        });
+      });
     }
 
     this.maxLimits = {};
     this.inpercentMaxLimits = {};
     sideKeysNF.forEach(s => {
       _this.maxLimits[s] = Math.max(...maxLimits[s]);
-    _this.inpercentMaxLimits[s] = Math.max(...inpercentMaxLimits[s]);
-  });
+      _this.inpercentMaxLimits[s] = Math.max(...inpercentMaxLimits[s]);
+    });
     this.totals = totals;
   },
 
@@ -702,7 +826,9 @@ const PopByAge = Component.extend({
       .merge(this.stackBars);
 
 
-    if (reorder) this.stackBars.order();
+    if (reorder) this.stackBars
+      .attr("fill", d => _this.cScale(d[prefixedStackDim]))
+      .order();
 
     // this.stackBars = this.bars.selectAll('.vzb-bc-bar')
     //   .selectAll('.vzb-bc-side')
@@ -765,29 +891,29 @@ const PopByAge = Component.extend({
         .attr("x", _attributeUpdaters._newX);
     }
 
-    this.entityLabels = this.labels.selectAll(".vzb-bc-label")
+    this.entityLabels = this.labels.selectAll(".vzb-bc-label text")
       .data(markers);
     //exit selection
     this.entityLabels.exit().remove();
 
-    this.entityLabels.enter().append("g")
+    this.entityLabels = this.entityLabels.enter().append("g")
       .attr("class", "vzb-bc-label")
       .attr("id", d => "vzb-bc-label-" + d[shiftedAgeDim] + "-" + _this._id)
-  .append("text")
+      .append("text")
       .attr("class", "vzb-bc-age")
       .merge(this.entityLabels)
       .each((d, i) => {
-      const yearOlds = _this.translator("popbyage/yearOlds");
+        const yearOlds = _this.translator("popbyage/yearOlds");
 
-    let age = parseInt(d[ageDim], 10);
+        let age = parseInt(d[ageDim], 10);
 
-    if (groupBy > 1) {
-      age = age + "-to-" + (age + groupBy - 1);
-    }
+        if (groupBy > 1) {
+          age = age + "-to-" + (age + groupBy - 1);
+        }
 
-    d["text"] = age + yearOlds;
-  })
-  .attr("y", (d, i) => firstBarOffsetY - (d[shiftedAgeDim] - domain[0]) * oneBarHeight - 10);
+          d["text"] = age + yearOlds;
+        })
+        .attr("y", (d, i) => firstBarOffsetY - (d[shiftedAgeDim] - domain[0]) * oneBarHeight - 10);
     // .style("fill", function(d) {
     //   var color = _this.cScale(values.color[d[ageDim]]);
     //   return d3.rgb(color).darker(2);
@@ -961,19 +1087,11 @@ const PopByAge = Component.extend({
 
 
     //update scales to the new range
-    if (this.model.marker.axis_y.scaleType !== "ordinal") {
-      this.yScale.range([this.height, 0]);
-    } else {
-      this.yScale.rangePoints([this.height, 0]).range();
-    }
+    this.yScale.range([this.height, 0]);
 
     const maxRange = this.twoSided ? ((this.width - this.activeProfile.centerWidth) * 0.5) : this.width;
 
-    if (this.model.marker.axis_x.scaleType !== "ordinal") {
-      this.xScale.range([0, maxRange]);
-    } else {
-      this.xScale.rangePoints([0, maxRange]).range();
-    }
+    this.xScale.range([0, maxRange]);
 
     //apply scales to axes and redraw
     this.yAxis.scale(this.yScale)
@@ -1036,6 +1154,11 @@ const PopByAge = Component.extend({
         const zeroTickWidth = zeroTickEl.node().getBBox().width;
         zeroTickEl.attr("dx", -(this.activeProfile.centerWidth + zeroTickWidth) * 0.5);
       }
+      this.xAxisEl.select(".tick line").classed("vzb-hidden", true);
+   
+      //hide left axis zero tick
+      const tickNodes = this.xAxisLeftEl.selectAll(".tick").nodes();
+      d3.select(tickNodes[tickNodes.length - 1]).classed("vzb-hidden", true);
     }
 
     const isRTL = this.model.locale.isRTL();
@@ -1054,9 +1177,7 @@ const PopByAge = Component.extend({
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
       .attr("transform", "translate(" + (isRTL ? this.width : margin.left * 0.4) + "," + (margin.top * 0.4) + ")");
-    // this.xTitleEl.select("text")
-    //   .attr('x', margin.left / 2)
-    //   .attr('y', margin.top / 2);
+    this.xTitleEl.select("text").text(this.model.marker.axis_x.getConceptprops().name);
 
     if (this.xInfoEl.select("svg").node()) {
       const titleBBox = this.xTitleEl.node().getBBox();
@@ -1090,21 +1211,22 @@ const PopByAge = Component.extend({
     //.transition().duration(duration)
       .style("opacity", d => {
 
-      if (_this.someHighlighted) {
-      //highlight or non-highlight
-      if (_this.model.marker.isHighlighted(d)) return OPACITY_HIGHLT;
-    }
+        if (_this.someHighlighted) {
+          //highlight or non-highlight
+          if (_this.model.marker.isHighlighted(d)) return OPACITY_HIGHLT;
+        }
 
-    if (_this.someSelected) {
-      //selected or non-selected
-      return _this.model.marker.isSelected(d) ? OPACITY_SELECT : OPACITY_SELECT_DIM;
-    }
+        if (_this.someSelected) {
+          //selected or non-selected
+          return _this.model.marker.isSelected(d) ? OPACITY_SELECT : OPACITY_SELECT_DIM;
+        }
 
-    if (_this.someHighlighted) return OPACITY_HIGHLT_DIM;
+        if (_this.someHighlighted) return OPACITY_HIGHLT_DIM;
 
-    return OPACITY_REGULAR;
-  });
+        return OPACITY_REGULAR;
+      });
 
+    this.stackBars.style("stroke", d => _this.model.marker.isSelected(d) ? "#333" : null);
 
     const nonSelectedOpacityZero = _this.model.marker.opacitySelectDim < 0.01;
 
