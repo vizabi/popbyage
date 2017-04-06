@@ -4,6 +4,9 @@
     "link": "npm link ../vizabi",
     "build": "cross-env NODE_ENV=production webpack --progress"
   },
+  "files": [
+    "build/dist"
+  ],
   "devDependencies": {
     "compare-version": "^0.1.2",
     "cross-env": "^4.0.0",
