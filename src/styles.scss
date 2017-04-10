@@ -29,6 +29,11 @@
       cursor: pointer;
     }
 
+    .vzb-bc-locked-crop {
+      pointer-events: none;
+      fill: none;
+    }
+
     .vzb-bc-labels-crop {
       overflow: visible;
       .vzb-bc-label {
