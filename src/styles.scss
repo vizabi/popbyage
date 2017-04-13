@@ -83,6 +83,9 @@
       @extend %vzb-chart-axis-title;
       fill: $vzb-color-grey;
       text-anchor: end;
+      &.vzb-bc-year-locked {
+        fill: $vzb-color-black;
+      }
     }
   }
   &.vzb-large {
