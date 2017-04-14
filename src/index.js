@@ -19,7 +19,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
     this.components = [{
       component,
       placeholder: ".vzb-tool-viz",
-      model: ["state.time", "state.marker", "state.entities", "state.entities_side", "state.entities_allpossible", "state.entities_geodomain", "locale", "ui"] //pass models to component
+      model: ["state.time", "state.marker", "state.marker_allpossible", "state.entities", "state.entities_side", "state.entities_allpossible", "state.entities_geodomain", "locale", "ui"] //pass models to component
     }, {
       component: Vizabi.Component.get("timeslider"),
       placeholder: ".vzb-tool-timeslider",
@@ -87,9 +87,11 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
       chart: {
         stacked: true,
         inpercent: false,
-        flipSides: true
+        flipSides: true,
+        lockActive: true,
+        lockNonSelected: 0
       },
-      "buttons": ["colors", "inpercent", "side", "moreoptions", "fullscreen"],
+      "buttons": ["colors", "inpercent", "side", "lock", "moreoptions", "fullscreen"],
       "dialogs": {
         "popup": ["timedisplay", "colors", "side", "moreoptions"],
         "sidebar": ["timedisplay", "colors", "show"],
