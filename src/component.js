@@ -10,7 +10,7 @@ const {
 } = Vizabi;
 
 // POP BY AGE CHART COMPONENT
-const PopByAge = Component.extend({
+const PopByAge = Component.extend("popbyage", {
 
   /**
    * Initializes the component (Bar Chart).
