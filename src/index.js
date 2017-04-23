@@ -1,6 +1,7 @@
 import "./styles.scss";
 import component from "./component";
 
+const VERSION_INFO = { version: __VERSION, build: __BUILD };
 
 //BAR CHART TOOL
 const PopByAge = Vizabi.Tool.extend("PopByAge", {
@@ -100,9 +101,9 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
       presentation: false
     },
     locale: { }
-  }
+  },
 
-
+  versionInfo: VERSION_INFO
 });
 
 export default PopByAge;
