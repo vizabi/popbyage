@@ -126,6 +126,7 @@ const PopByAge = Component.extend("popbyage", {
           if (colorConcept.concept_type == "entity_set") {
             stackDim = colorConcept.domain;
             //show["is--" + _this.model.marker.color.which] = true;
+            show[stackDim] = {};
             const sideConcept = _this.model.marker.side.getConceptprops();
             if (sideConcept.concept_type == "entity_set" && stackDim == sideConcept.domain && _this.model.marker.side.which !== _this.model.marker.color.which) {
               _this.model.marker.side.setWhich({"concept" : _this.model.marker.color.which});
@@ -170,7 +171,7 @@ const PopByAge = Component.extend("popbyage", {
           }
         } 
 //        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
-        _this.model.entities_geodomain.skipFilter = sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension;
+        _this.model.entities_geodomain.skipFilter = sideDim === _this.geoDomainDimension || (_this.STACKDIM === _this.geoDomainDimension && !!_this.model.entities.getFilteredEntities().length);
         _this.model.marker.side.clearSideState();
         const skipFilterSide = sideDim !== _this.geoDomainDimension || _this.model.marker.color.which === _this.model.marker.side.which;
         if (!skipFilterSide) {
@@ -195,6 +196,7 @@ const PopByAge = Component.extend("popbyage", {
             }
           });
         }
+        _this.model.entities_geodomain.skipFilter = _this.SIDEDIM === _this.geoDomainDimension || (_this.STACKDIM === _this.geoDomainDimension && !!_this.model.entities.getFilteredEntities().length);
       },
       "change:entities_side.show": function(evt) {
         if (!_this._readyOnce) return;
