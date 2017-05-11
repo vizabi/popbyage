@@ -75,7 +75,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
       }
 
       const entities_geodomain = model.state.entities_geodomain;
-      entities_geodomain.skipFilter = model.state.entities.dim === entities_geodomain.dim ||
+      entities_geodomain.skipFilter = (model.state.entities.dim === entities_geodomain.dim && !!model.state.entities.getFilteredEntities().length) ||
         model.state.entities_side.dim === entities_geodomain.dim;
     }
   },
