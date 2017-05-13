@@ -146,7 +146,8 @@ const PopByAge = Component.extend("popbyage", {
           _this.model.entities_side.set("show", sideShow);
         }
         _this.model.entities_side.skipFilter = skipFilterSide;
-        _this.model.entities_geodomain.skipFilter = stackDim === _this.geoDomainDimension || _this.SIDEDIM === _this.geoDomainDimension;
+        _this.model.entities_geodomain.skipFilter = (stackDim === _this.geoDomainDimension || _this.SIDEDIM === _this.geoDomainDimension) &&
+          (Boolean(_this.model.entities.getFilteredEntities().length || !_this.model.entities_side.skipFilter));
         _this.model.entities.set(entitiesProps);
         _this.model.entities_allpossible.set("dim", stackDim);
         _this.model.marker_allpossible.color.set("which", _this.model.marker.color.which);
@@ -171,7 +172,8 @@ const PopByAge = Component.extend("popbyage", {
           }
         } 
 //        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
-        _this.model.entities_geodomain.skipFilter = sideDim === _this.geoDomainDimension || (_this.STACKDIM === _this.geoDomainDimension && !!_this.model.entities.getFilteredEntities().length);
+        _this.model.entities_geodomain.skipFilter = (sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) && 
+          (Boolean(_this.model.entities.getFilteredEntities().length || !_this.model.entities_side.skipFilter));
         _this.model.marker.side.clearSideState();
         const skipFilterSide = sideDim !== _this.geoDomainDimension || _this.model.marker.color.which === _this.model.marker.side.which;
         if (!skipFilterSide) {
@@ -182,21 +184,22 @@ const PopByAge = Component.extend("popbyage", {
         entitiesSideProps["dim"] = sideDim;
 //        _this.model.entities_side.clearShow();
         _this.model.entities_side.set(entitiesSideProps);
+        if(_this.model.marker.color.which === _this.model.marker.side.which) {
+          _this.model.entities.clearShow();
+        }
       },
       "change:entities.show": function(evt) {
         if (!_this._readyOnce) return;
         if (_this.model.entities.dim === _this.model.entities_side.dim
-          && !utils.isEmpty(_this.model.entities.show)
-          && _this.model.entities.show[_this.model.entities.dim]
           && !utils.isEmpty(_this.model.entities_side.show)) {
-          utils.forEach(_this.model.entities_side.getFilteredEntities(), s => {
-            if (!_this.model.entities.isShown(s)) {
-              _this.model.marker.side.clearSideState();
-              _this.model.entities_side.showEntity(s);
-            }
-          });
+          const showEntities = _this.model.entities_side.getFilteredEntities().filter(s => !_this.model.entities.isShown(s));
+          if (showEntities.length) {
+            _this.model.marker.side.clearSideState();
+            _this.model.entities_side.showEntity(showEntities);
+          }
         }
-        _this.model.entities_geodomain.skipFilter = _this.SIDEDIM === _this.geoDomainDimension || (_this.STACKDIM === _this.geoDomainDimension && !!_this.model.entities.getFilteredEntities().length);
+        _this.model.entities_geodomain.skipFilter = (_this.SIDEDIM === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) && 
+          (Boolean(_this.model.entities.getFilteredEntities().length || !_this.model.entities_side.skipFilter));
       },
       "change:entities_side.show": function(evt) {
         if (!_this._readyOnce) return;
@@ -208,13 +211,13 @@ const PopByAge = Component.extend("popbyage", {
             _entitiesSameDimWithSide = h;
           }
         });
-        if (_entitiesSameDimWithSide && !utils.isEmpty(_entitiesSameDimWithSide.show) && _entitiesSameDimWithSide.show[_entitiesSameDimWithSide.dim]) {
-          utils.forEach(_this.model.entities_side.getFilteredEntities(), s => {
-            if (!_entitiesSameDimWithSide.isShown(s)) {
-              _entitiesSameDimWithSide.showEntity(s);
-              doReturn = true;
-            }
-          });
+        if (_entitiesSameDimWithSide) {
+          _this.model.entities.getFilteredEntities();
+          const showEntities = _this.model.entities_side.getFilteredEntities().filter(s => !_entitiesSameDimWithSide.isShown(s));
+          if (showEntities.length) {
+            _entitiesSameDimWithSide.showEntity(showEntities);
+            doReturn = true;
+          }
         }
         if (doReturn) return;
 
