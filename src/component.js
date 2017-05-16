@@ -147,7 +147,7 @@ const PopByAge = Component.extend("popbyage", {
         }
         _this.model.entities_side.skipFilter = skipFilterSide;
         _this.model.entities_geodomain.skipFilter = (stackDim === _this.geoDomainDimension || _this.SIDEDIM === _this.geoDomainDimension) &&
-          (Boolean(_this.model.entities.getFilteredEntities().length || !_this.model.entities_side.skipFilter));
+          (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
         _this.model.entities.set(entitiesProps);
         _this.model.entities_allpossible.set("dim", stackDim);
         _this.model.marker_allpossible.color.set("which", _this.model.marker.color.which);
@@ -173,7 +173,7 @@ const PopByAge = Component.extend("popbyage", {
         } 
 //        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
         _this.model.entities_geodomain.skipFilter = (sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) && 
-          (Boolean(_this.model.entities.getFilteredEntities().length || !_this.model.entities_side.skipFilter));
+          (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
         _this.model.marker.side.clearSideState();
         const skipFilterSide = sideDim !== _this.geoDomainDimension || _this.model.marker.color.which === _this.model.marker.side.which;
         if (!skipFilterSide) {
@@ -199,7 +199,7 @@ const PopByAge = Component.extend("popbyage", {
           }
         }
         _this.model.entities_geodomain.skipFilter = (_this.SIDEDIM === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) && 
-          (Boolean(_this.model.entities.getFilteredEntities().length || !_this.model.entities_side.skipFilter));
+          (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
       },
       "change:entities_side.show": function(evt) {
         if (!_this._readyOnce) return;
@@ -251,7 +251,7 @@ const PopByAge = Component.extend("popbyage", {
             return;
           }
           _this.yearLocked.text(_this.translator("popbyage/locked") + " " + _this.lock);
-          _this._makeOutlines(_this.frameAxisX);
+          _this._makeOutlines(_this.frameAxisX, _this.total);
         } else {
           _this.yearLocked.text("");
           _this.lockedPaths.html("");
@@ -426,10 +426,14 @@ const PopByAge = Component.extend("popbyage", {
     const _this = this;   
     if (!this.lock) return;
 
-    this.model.marker.getFrame(this.model.time.parse("" + this.lock), lockFrame => {
+    this.model.marker.getFrame(this.model.time.parse("" + this.lock), (lockFrame, lockTime) => {
       if (!lockFrame) return;
       _this.lockedPaths.html("");
-      _this._makeOutlines(lockFrame.axis_x);  
+      let total;
+      if (this.ui.chart.inpercent) {
+        total = this.totals[lockTime];
+      }
+      _this._makeOutlines(lockFrame.axis_x, total);
     });
   },
 
@@ -972,7 +976,7 @@ const PopByAge = Component.extend("popbyage", {
     }
   },
 
-  _makeOutlines(frame) {
+  _makeOutlines(frame, total) {
     const _this = this;
 
     const KEYS = utils.unique(this.model.marker._getAllDimensions({ exceptType: "time" }))
@@ -1004,7 +1008,7 @@ const PopByAge = Component.extend("popbyage", {
         const x = utils.getValueMD(age.side[i].stack[stackIndex[i]], frame, KEYS);
         r.x = x ? _this.xScale(x) : 0;
           if (_this.ui.chart.inpercent) {
-            r.x /= _this.total[age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
+            r.x /= total[age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
           }
         return r;
       });
