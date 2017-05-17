@@ -77,10 +77,20 @@
     .vzb-bc-axis-x-title,
     .vzb-bc-title {
       @extend %vzb-chart-axis-title;
+      @include rtl {
+        text {
+          direction: rtl;
+          unicode-bidi: embed;
+        }
+      }
       fill: $vzb-color-primary;
     }
     .vzb-bc-year {
       @extend %vzb-chart-axis-title;
+      @include rtl {
+        direction: rtl;
+        unicode-bidi: embed;
+      }
       fill: $vzb-color-grey;
       text-anchor: end;
       &.vzb-bc-year-locked {

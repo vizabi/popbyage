@@ -1278,14 +1278,14 @@ const PopByAge = Component.extend("popbyage", {
     this.title
       .attr("x", margin.left + (this.twoSided ? translateX - this.activeProfile.titlesSpacing : 0))
       .style("text-anchor", this.twoSided ? "end" : "")
-      .attr("y", margin.top * 0.7);
+      .attr("y", margin.top * 0.675);
     this.titleRight
       .attr("x", margin.left + translateX + this.activeProfile.titlesSpacing)
-      .attr("y", margin.top * 0.7);
+      .attr("y", margin.top * 0.675);
 
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
-      .attr("transform", "translate(" + (isRTL ? this.width : margin.left * 0.4) + "," + (margin.top * 0.4) + ")");
+      .attr("transform", "translate(" + (isRTL ? margin.left + this.width : margin.left * 0.4) + "," + (margin.top * 0.4) + ")");
     this.xTitleEl.select("text").text(this.model.marker.axis_x.getConceptprops().name);
 
     if (this.xInfoEl.select("svg").node()) {
@@ -1301,9 +1301,8 @@ const PopByAge = Component.extend("popbyage", {
         + (t.translateY - infoElHeight * 0.8) + ")");
     }
 
-
-    this.year.attr("x", this.width + margin.left).attr("y", margin.top * 0.4);
-    this.yearLocked.attr("x", this.width + margin.left).attr("y", margin.top);
+    this.year.attr("x", isRTL ? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.4);
+    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.95);
 
   },
 
