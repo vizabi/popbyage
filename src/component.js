@@ -70,6 +70,7 @@ const PopByAge = Component.extend("popbyage", {
         if (!_this.snapped) {
           if (_this.timeSteps.filter(t => (t - _this.model.time.value) == 0).length) {
             _this.model.marker.getFrame(_this.model.time.value, frame => {
+              if(!frame) return;
               _this.frame = frame;
               _this.frameAxisX = frame.axis_x;
               _this._updateEntities();
@@ -130,12 +131,12 @@ const PopByAge = Component.extend("popbyage", {
             const sideConcept = _this.model.marker.side.getConceptprops();
             if (sideConcept.concept_type == "entity_set" && stackDim == sideConcept.domain && _this.model.marker.side.which !== _this.model.marker.color.which) {
               _this.model.marker.side.setWhich({"concept" : _this.model.marker.color.which});
-            }          
+            }
           } else {
             stackDim = _this.model.marker.color.which;
           }
         }
-        if (_this.STACKDIM !== stackDim) { 
+        if (_this.STACKDIM !== stackDim) {
           entitiesProps["show"] = show;
         }
         entitiesProps["dim"] = stackDim;
@@ -166,13 +167,13 @@ const PopByAge = Component.extend("popbyage", {
             const colorConcept = _this.model.marker.color.getConceptprops();
             if (colorConcept.concept_type == "entity_set" && sideDim == colorConcept.domain && _this.model.marker.color.which !== _this.model.marker.side.which) {
               _this.model.marker.color.setWhich({"concept" : _this.model.marker.side.which});
-            }          
+            }
           } else {
             sideDim = _this.model.marker.side.which;
           }
-        } 
+        }
 //        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
-        _this.model.entities_geodomain.skipFilter = (sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) && 
+        _this.model.entities_geodomain.skipFilter = (sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) &&
           (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
         _this.model.marker.side.clearSideState();
         const skipFilterSide = sideDim !== _this.geoDomainDimension || _this.model.marker.color.which === _this.model.marker.side.which;
@@ -198,7 +199,7 @@ const PopByAge = Component.extend("popbyage", {
             _this.model.entities_side.showEntity(showEntities);
           }
         }
-        _this.model.entities_geodomain.skipFilter = (_this.SIDEDIM === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) && 
+        _this.model.entities_geodomain.skipFilter = (_this.SIDEDIM === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) &&
           (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
       },
       "change:entities_side.show": function(evt) {
@@ -326,6 +327,9 @@ const PopByAge = Component.extend("popbyage", {
     this.someSelected = (this.model.marker.select.length > 0);
     this.nonSelectedOpacityZero = false;
 
+    this.age = this.model.marker.axis_y.getEntity();
+    this.groupBy = +this.age.grouping || 1;
+
     this.on("resize", () => {
       _this._updateEntities();
       _this._redrawLocked();
@@ -333,7 +337,7 @@ const PopByAge = Component.extend("popbyage", {
 
     this._attributeUpdaters = {
       _newWidth(d, i) {
-        d["x_"] = 0;
+        //d["x_"] = 0;
         let width;
         if (_this.geoLess && _this.stackSkip && _this.sideSkip) {
           width = (_this.frameAxisX[d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue];
@@ -359,9 +363,10 @@ const PopByAge = Component.extend("popbyage", {
         if (prevSbl) {
           const prevSblDatum = d3.select(prevSbl).datum();
           d["x_"] = prevSblDatum.x_ + prevSblDatum.width_;
-        } else {
-          d["x_"] = 0;
         }
+        // else {
+        //   d["x_"] = 0;
+        // }
         return d.x_;
       }
     };
@@ -377,22 +382,30 @@ const PopByAge = Component.extend("popbyage", {
     const _this = this;
 
     this.lock = _this.model.ui.chart.lockNonSelected;
+
+    this.side = this.model.marker.label_side.getEntity();
+    this.stack = this.model.marker.label_stack.getEntity();
+    this.age = this.model.marker.axis_y.getEntity();
+
+    if (this.groupBy !== +this.age.grouping) {
+      this.model.ui.chart.lockNonSelected = 0;
+      this.labels.html("");
+    }
+    this.groupBy = +this.age.grouping || 1;
+    this.model.time.step = this.groupBy;
     this.timeSteps = this.model.time.getAllSteps();
+    this.model.time.end = this.timeSteps[this.timeSteps.length - 1];
 
     this.shiftScale = d3.scale.linear()
       .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
       .range([0, this.timeSteps.length - 1]);
 
-    this.side = this.model.marker.label_side.getEntity();
     this.SIDEDIM = this.side.getDimension();
     this.PREFIXEDSIDEDIM = "side_" + this.SIDEDIM;
-    this.stack = this.model.marker.label_stack.getEntity();
     this.STACKDIM = this.stack.getDimension();// || this.geoDomainDimension;//this.model.marker.color.which;
     this.PREFIXEDSTACKDIM = "stack_" + this.STACKDIM;
-    this.age = this.model.marker.axis_y.getEntity();
     this.AGEDIM = this.age.getDimension();
     this.TIMEDIM = this.model.time.getDimension();
-    this.groupBy = this.age.grouping || 1;
     this.checkDimensions();
     this.updateUIStrings();
     this._updateIndicators();
@@ -403,13 +416,19 @@ const PopByAge = Component.extend("popbyage", {
       _this.model.ui.chart.lockNonSelected = 0;
     }
 
+    //this.model.time.set('value', _this.model.time.value, true, true);
+
     this.frame = null;
     this.frameAllColor = {};
-    this.model.marker.getFrame(_this.model.time.value, frame => {
+
+    this.model.marker.getFrame(_this.model.time.value, (frame, time) => {
       _this.frame = frame;
       _this.frameAxisX = frame.axis_x;
 
-      _this._createLimits();
+      //_this._createLimits();
+      const frames = {};
+      frames[time] = frame;
+      _this._createLimits2(frames);
       _this._updateLimits();
 
       _this.resize();
@@ -419,11 +438,21 @@ const PopByAge = Component.extend("popbyage", {
         _this.updateBarsOpacity();
         _this._redrawLocked();
       });
+
+      this.model.marker.getFrame(null, frames => {
+        _this._createLimits2(frames);
+        _this._updateLimits();
+
+        _this.resize();
+        _this._updateEntities(true);
+        _this.updateBarsOpacity();
+        _this._redrawLocked();
+      });
     });
   },
 
   _redrawLocked() {
-    const _this = this;   
+    const _this = this;
     if (!this.lock) return;
 
     this.model.marker.getFrame(this.model.time.parse("" + this.lock), (lockFrame, lockTime) => {
@@ -647,34 +676,32 @@ const PopByAge = Component.extend("popbyage", {
     this.markers = this.model.marker.getKeys(ageDim);
   },
 
-  _createLimits() {
+  _createLimits2(frames) {
     const _this = this;
-    const axisX = this.model.marker.axis_x;
 
     //const sideKeysNF = Object.keys(this.model.marker.side.getItems());
     const sideKeysNF = Object.keys(this.model.marker.side.getNestedItems([this.SIDEDIM]));
     if (!sideKeysNF.length) sideKeysNF.push("undefined");
 
-    const keys = this.stackSkip && this.sideSkip ? [] : (this.sideSkip ? [this.STACKDIM] : (this.stackSkip ? [this.SIDEDIM] : [this.STACKDIM, this.SIDEDIM]));
-    const limits = axisX.getLimitsByDimensions(keys.concat([this.AGEDIM, this.TIMEDIM]));
-    const timeKeys = axisX.getUnique();
     const totals = {};
     const inpercentMaxLimits = {};
     const maxLimits = {};
+    const geoDefault = this.geoDomainDefaultValue;
     sideKeysNF.forEach(s => {
       maxLimits[s] = [];
       inpercentMaxLimits[s] = [];
     });
 
     if (_this.stackSkip && _this.sideSkip) {
-      utils.forEach(timeKeys, time => {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
         totals[time] = {};
         let ageSum = 0;
         const sideMaxLimits = [];
         utils.forEach(_this.ageKeys, age => {
           let stackSum = 0;
-          if (limits[age] && limits[age][time]) {
-            stackSum += limits[age][time].max;
+          if (frame[age]) {
+            stackSum += frame[age][geoDefault];
             ageSum += stackSum;
           }
           sideMaxLimits.push(stackSum);
@@ -685,15 +712,16 @@ const PopByAge = Component.extend("popbyage", {
         maxLimits[sideKeysNF[0]].push(maxSideLimit);
       });
     } else if (_this.sideSkip) {
-      utils.forEach(timeKeys, time => {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
         totals[time] = {};
         let ageSum = 0;
         const sideMaxLimits = [];
         utils.forEach(_this.ageKeys, age => {
           let stackSum = 0;
             utils.forEach(_this.stackKeys, stack => {
-              if (limits[stack] && limits[stack][age] && limits[stack][age][time]) {
-              stackSum += limits[stack][age][time].max;
+              if (frame[stack] && frame[stack][age]) {
+              stackSum += frame[stack][age][geoDefault] || frame[stack][age];
               ageSum += stackSum;
             }
           });
@@ -705,15 +733,16 @@ const PopByAge = Component.extend("popbyage", {
         maxLimits[sideKeysNF[0]].push(maxSideLimit);
       });
     } else if (_this.stackSkip) {
-      utils.forEach(timeKeys, time => {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
         totals[time] = {};
         utils.forEach(sideKeysNF, side => {
           let ageSum = 0;
           const sideMaxLimits = [];
           utils.forEach(_this.ageKeys, age => {
             let stackSum = 0;
-            if (limits[side] && limits[side][age] && limits[side][age][time]) {
-              stackSum += limits[side][age][time].max;
+            if (frame[side] && frame[side][age]) {
+              stackSum += frame[side][age][geoDefault] || frame[side][age];
               ageSum += stackSum;
             }
             sideMaxLimits.push(stackSum);
@@ -725,7 +754,8 @@ const PopByAge = Component.extend("popbyage", {
         });
       });
     } else {
-      utils.forEach(timeKeys, time => {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
         totals[time] = {};
         utils.forEach(sideKeysNF, side => {
           let ageSum = 0;
@@ -733,8 +763,8 @@ const PopByAge = Component.extend("popbyage", {
           utils.forEach(_this.ageKeys, age => {
             let stackSum = 0;
             utils.forEach(_this.stackKeys, stack => {
-              if (limits[stack][side] && limits[stack][side][age] && limits[stack][side][age][time]) {
-                stackSum += limits[stack][side][age][time].max;
+              if (frame[stack][side] && frame[stack][side][age]) {
+                stackSum += frame[stack][side][age][geoDefault] || frame[stack][side][age];
                 ageSum += stackSum;
               }
             });
@@ -756,6 +786,116 @@ const PopByAge = Component.extend("popbyage", {
     });
     this.totals = totals;
   },
+
+  // _createLimits() {
+  //   const _this = this;
+  //   const axisX = this.model.marker.axis_x;
+
+  //   //const sideKeysNF = Object.keys(this.model.marker.side.getItems());
+  //   const sideKeysNF = Object.keys(this.model.marker.side.getNestedItems([this.SIDEDIM]));
+  //   if (!sideKeysNF.length) sideKeysNF.push("undefined");
+
+  //   const keys = this.stackSkip && this.sideSkip ? [] : (this.sideSkip ? [this.STACKDIM] : (this.stackSkip ? [this.SIDEDIM] : [this.STACKDIM, this.SIDEDIM]));
+  //   const limits = axisX.getLimitsByDimensions(keys.concat([this.AGEDIM, this.TIMEDIM]));
+  //   const timeKeys = axisX.getUnique();
+  //   const totals = {};
+  //   const inpercentMaxLimits = {};
+  //   const maxLimits = {};
+  //   sideKeysNF.forEach(s => {
+  //     maxLimits[s] = [];
+  //     inpercentMaxLimits[s] = [];
+  //   });
+
+  //   if (_this.stackSkip && _this.sideSkip) {
+  //     utils.forEach(timeKeys, time => {
+  //       totals[time] = {};
+  //       let ageSum = 0;
+  //       const sideMaxLimits = [];
+  //       utils.forEach(_this.ageKeys, age => {
+  //         let stackSum = 0;
+  //         if (limits[age] && limits[age][time]) {
+  //           stackSum += limits[age][time].max;
+  //           ageSum += stackSum;
+  //         }
+  //         sideMaxLimits.push(stackSum);
+  //       });
+  //       totals[time][sideKeysNF[0]] = ageSum;
+  //       const maxSideLimit = Math.max(...sideMaxLimits);
+  //       inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
+  //       maxLimits[sideKeysNF[0]].push(maxSideLimit);
+  //     });
+  //   } else if (_this.sideSkip) {
+  //     utils.forEach(timeKeys, time => {
+  //       totals[time] = {};
+  //       let ageSum = 0;
+  //       const sideMaxLimits = [];
+  //       utils.forEach(_this.ageKeys, age => {
+  //         let stackSum = 0;
+  //           utils.forEach(_this.stackKeys, stack => {
+  //             if (limits[stack] && limits[stack][age] && limits[stack][age][time]) {
+  //             stackSum += limits[stack][age][time].max;
+  //             ageSum += stackSum;
+  //           }
+  //         });
+  //         sideMaxLimits.push(stackSum);
+  //       });
+  //       totals[time][sideKeysNF[0]] = ageSum;
+  //       const maxSideLimit = Math.max(...sideMaxLimits);
+  //       inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
+  //       maxLimits[sideKeysNF[0]].push(maxSideLimit);
+  //     });
+  //   } else if (_this.stackSkip) {
+  //     utils.forEach(timeKeys, time => {
+  //       totals[time] = {};
+  //       utils.forEach(sideKeysNF, side => {
+  //         let ageSum = 0;
+  //         const sideMaxLimits = [];
+  //         utils.forEach(_this.ageKeys, age => {
+  //           let stackSum = 0;
+  //           if (limits[side] && limits[side][age] && limits[side][age][time]) {
+  //             stackSum += limits[side][age][time].max;
+  //             ageSum += stackSum;
+  //           }
+  //           sideMaxLimits.push(stackSum);
+  //         });
+  //         totals[time][side] = ageSum;
+  //         const maxSideLimit = Math.max(...sideMaxLimits);
+  //         inpercentMaxLimits[side].push(maxSideLimit / ageSum);
+  //         maxLimits[side].push(maxSideLimit);
+  //       });
+  //     });
+  //   } else {
+  //     utils.forEach(timeKeys, time => {
+  //       totals[time] = {};
+  //       utils.forEach(sideKeysNF, side => {
+  //         let ageSum = 0;
+  //         const sideMaxLimits = [];
+  //         utils.forEach(_this.ageKeys, age => {
+  //           let stackSum = 0;
+  //           utils.forEach(_this.stackKeys, stack => {
+  //             if (limits[stack][side] && limits[stack][side][age] && limits[stack][side][age][time]) {
+  //               stackSum += limits[stack][side][age][time].max;
+  //               ageSum += stackSum;
+  //             }
+  //           });
+  //           sideMaxLimits.push(stackSum);
+  //         });
+  //         totals[time][side] = ageSum;
+  //         const maxSideLimit = Math.max(...sideMaxLimits);
+  //         inpercentMaxLimits[side].push(maxSideLimit / ageSum);
+  //         maxLimits[side].push(maxSideLimit);
+  //       });
+  //     });
+  //   }
+
+  //   this.maxLimits = {};
+  //   this.inpercentMaxLimits = {};
+  //   sideKeysNF.forEach(s => {
+  //     _this.maxLimits[s] = Math.max(...maxLimits[s]);
+  //     _this.inpercentMaxLimits[s] = Math.max(...inpercentMaxLimits[s]);
+  //   });
+  //   this.totals = totals;
+  // },
 
   _updateLimits() {
     const _this = this;
@@ -780,7 +920,7 @@ const PopByAge = Component.extend("popbyage", {
   });
     return total;
   },
-  
+
   /**
    * Updates entities
    */
@@ -850,6 +990,8 @@ const PopByAge = Component.extend("popbyage", {
           s[stackDim] = m;
           s[prefixedSideDim] = r[prefixedSideDim];
           s[prefixedStackDim] = m;
+          s["x_"] = 0;
+          s["width_"] = 0;
           return s;
         });
         return r;
@@ -902,7 +1044,7 @@ const PopByAge = Component.extend("popbyage", {
       .attr("y", 0)
       .attr("height", barHeight)
       .attr("fill", d => _this.cScale(_this.frameAllColor[d[prefixedStackDim]] || d[prefixedStackDim]))
-      .attr("width", _attributeUpdaters._newWidth)
+      //.attr("width", _attributeUpdaters._newWidth)
       .attr("x", _attributeUpdaters._newX)
       .on("mouseover", _this.interaction.mouseover)
       .on("mouseout", _this.interaction.mouseout)
@@ -986,7 +1128,7 @@ const PopByAge = Component.extend("popbyage", {
         if (key === _this.AGEDIM) KEYS[i] = _this.SHIFTEDAGEDIM;
         //if (_this.geoLess)
       });
- 
+
     const barHeight = this.barHeight;
     const firstBarOffsetY = this.firstBarOffsetY + barHeight;
 
@@ -1265,7 +1407,7 @@ const PopByAge = Component.extend("popbyage", {
         zeroTickEl.attr("dx", -(this.activeProfile.centerWidth + zeroTickWidth) * 0.5);
       }
       this.xAxisEl.select(".tick line").classed("vzb-hidden", true);
-   
+
       //hide left axis zero tick
       const tickNodes = this.xAxisLeftEl.selectAll(".tick").nodes();
       d3.select(tickNodes[tickNodes.length - 1]).classed("vzb-hidden", true);
@@ -1327,13 +1469,13 @@ const PopByAge = Component.extend("popbyage", {
       const isHighlighted = someHighlighted ? _this.model.marker.isHighlighted(d): false;
       const bar = d3.select(this);
 
-      bar.style("opacity", isHighlighted ? OPACITY_HIGHLT 
-        : 
+      bar.style("opacity", isHighlighted ? OPACITY_HIGHLT
+        :
         someSelected ? (isSelected ? OPACITY_SELECT : OPACITY_SELECT_DIM)
-          : 
+          :
           someHighlighted ? OPACITY_HIGHLT_DIM : OPACITY_REGULAR)
         .style("stroke", isSelected ? "#333" : null);
-      
+
       if(nonSelectedOpacityZeroFlag) {
         bar.style("pointer-events", !someSelected || !nonSelectedOpacityZero || isSelected ? "visible" : "none");
       }
