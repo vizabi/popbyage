@@ -554,17 +554,8 @@ const PopByAge = Component.extend("popbyage", {
     this.translator = this.model.locale.getTFunction();
 
     const xTitle = this.xTitleEl.selectAll("text").data([0]);
-    xTitle.enter().append("text");
-    xTitle
-      .on("click", () => {
-        _this.parent
-          .findChildByName("gapminder-treemenu")
-          .markerID("axis_x")
-          .alignX(_this.model.locale.isRTL() ? "right" : "left")
-          .alignY("top")
-          .updateView()
-          .toggle();
-      });
+    xTitle.enter().append("text")
+      .text(_this.translator("popbyage/title"));
 
     const conceptPropsX = this.model.marker.axis_x.getConceptprops();
     utils.setIcon(this.xInfoEl, iconQuestion)
@@ -1430,7 +1421,6 @@ const PopByAge = Component.extend("popbyage", {
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
       .attr("transform", "translate(" + (isRTL ? margin.left + this.width : margin.left * 0.4) + "," + (margin.top * 0.4) + ")");
-    this.xTitleEl.select("text").text(this.model.marker.axis_x.getConceptprops().name);
 
     if (this.xInfoEl.select("svg").node()) {
       const titleBBox = this.xTitleEl.node().getBBox();

@@ -84,6 +84,7 @@
         }
       }
       fill: $vzb-color-primary;
+      pointer-events: none;
     }
     .vzb-bc-year {
       @extend %vzb-chart-axis-title;
