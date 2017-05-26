@@ -20,7 +20,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
     this.components = [{
       component,
       placeholder: ".vzb-tool-viz",
-      model: ["state.time", "state.marker", "state.marker_allpossible", "state.entities", "state.entities_side", "state.entities_allpossible", "state.entities_geodomain", "locale", "ui"] //pass models to component
+      model: ["state.time", "state.marker", "state.marker_allpossible", "state.entities", "state.entities_side", "state.entities_age", "state.entities_allpossible", "state.entities_geodomain", "locale", "ui"] //pass models to component
     }, {
       component: Vizabi.Component.get("timeslider"),
       placeholder: ".vzb-tool-timeslider",
