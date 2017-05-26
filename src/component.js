@@ -39,6 +39,9 @@ const PopByAge = Component.extend("popbyage", {
       name: "entities_side",
       type: "entities"
     }, {
+      name: "entities_age",
+      type: "entities"
+    }, {
       name: "entities_allpossible",
       type: "entities"
     }, {
@@ -229,6 +232,14 @@ const PopByAge = Component.extend("popbyage", {
         _this._updateEntities(true);
         _this._redrawLocked();
       },
+      "change:entities_age.grouping": function(evt) {
+        _this.groupBy = +_this.model.entities_age.grouping || 1;
+        _this.model.time.step = _this.groupBy;
+        _this.timeSteps = _this.model.time.getAllSteps();
+        _this.model.time.end = _this.timeSteps[_this.timeSteps.length - 1];
+        _this.model.ui.chart.lockNonSelected = 0;
+        _this.labels.html("");
+      },
       "change:ui.chart.inpercent": function(evt) {
         if (!_this._readyOnce) return;
         _this._updateLimits();
@@ -327,8 +338,7 @@ const PopByAge = Component.extend("popbyage", {
     this.someSelected = (this.model.marker.select.length > 0);
     this.nonSelectedOpacityZero = false;
 
-    this.age = this.model.marker.axis_y.getEntity();
-    this.groupBy = +this.age.grouping || 1;
+    this.groupBy = +this.model.entities_age.grouping || 1;
 
     this.on("resize", () => {
       _this._updateEntities();
@@ -383,28 +393,18 @@ const PopByAge = Component.extend("popbyage", {
 
     this.lock = _this.model.ui.chart.lockNonSelected;
 
-    this.side = this.model.marker.label_side.getEntity();
-    this.stack = this.model.marker.label_stack.getEntity();
-    this.age = this.model.marker.axis_y.getEntity();
-
-    if (this.groupBy !== +this.age.grouping) {
-      this.model.ui.chart.lockNonSelected = 0;
-      this.labels.html("");
-    }
-    this.groupBy = +this.age.grouping || 1;
-    this.model.time.step = this.groupBy;
     this.timeSteps = this.model.time.getAllSteps();
-    this.model.time.end = this.timeSteps[this.timeSteps.length - 1];
+    //this.model.time.end = this.timeSteps[this.timeSteps.length - 1];
 
     this.shiftScale = d3.scale.linear()
       .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
       .range([0, this.timeSteps.length - 1]);
 
-    this.SIDEDIM = this.side.getDimension();
+    this.SIDEDIM = this.model.entities_side.getDimension();
     this.PREFIXEDSIDEDIM = "side_" + this.SIDEDIM;
-    this.STACKDIM = this.stack.getDimension();// || this.geoDomainDimension;//this.model.marker.color.which;
+    this.STACKDIM = this.model.entities.getDimension();// || this.geoDomainDimension;//this.model.marker.color.which;
     this.PREFIXEDSTACKDIM = "stack_" + this.STACKDIM;
-    this.AGEDIM = this.age.getDimension();
+    this.AGEDIM = this.model.entities_age.getDimension();
     this.TIMEDIM = this.model.time.getDimension();
     this.checkDimensions();
     this.updateUIStrings();
@@ -431,6 +431,8 @@ const PopByAge = Component.extend("popbyage", {
       _this._createLimits2(frames);
       _this._updateLimits();
 
+      _this._getLimits();
+
       _this.resize();
       this.model.marker_allpossible.getFrame(_this.model.time.value, apFrame => {
         _this.frameAllColor = apFrame.color || {};
@@ -438,8 +440,16 @@ const PopByAge = Component.extend("popbyage", {
         _this.updateBarsOpacity();
         _this._redrawLocked();
       });
+    });
 
-      this.model.marker.getFrame(null, frames => {
+  },
+
+  _getLimits() {
+    const _this = this;
+    return function() {
+      const groupBy = _this.groupBy;
+      _this.model.marker.getFrame(null, frames => {
+        if(groupBy !== _this.groupBy) return;
         _this._createLimits2(frames);
         _this._updateLimits();
 
@@ -448,7 +458,7 @@ const PopByAge = Component.extend("popbyage", {
         _this.updateBarsOpacity();
         _this._redrawLocked();
       });
-    });
+    }();
   },
 
   _redrawLocked() {
@@ -648,7 +658,7 @@ const PopByAge = Component.extend("popbyage", {
     this.stackKeys = sortedStackKeys;
     this.stackItems = this.model.marker.label_stack.getItems();
 
-    this.stacked = this.ui.chart.stacked && this.model.marker.color.use != "constant" && this.stack.getDimension();
+    this.stacked = this.ui.chart.stacked && this.model.marker.color.use != "constant" && this.model.entities.getDimension();
 
     this.twoSided = this.sideKeys.length > 1;
     this.titleRight.classed("vzb-hidden", !this.twoSided);
