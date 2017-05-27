@@ -1475,7 +1475,8 @@ const PopByAge = Component.extend("popbyage", {
         someSelected ? (isSelected ? OPACITY_SELECT : OPACITY_SELECT_DIM)
           :
           someHighlighted ? OPACITY_HIGHLT_DIM : OPACITY_REGULAR)
-        .style("stroke", isSelected ? "#333" : null);
+        .style("stroke", isSelected ? "#333" : null)
+        .style("y", isSelected ? "0.5px" : null);
 
       if(nonSelectedOpacityZeroFlag) {
         bar.style("pointer-events", !someSelected || !nonSelectedOpacityZero || isSelected ? "visible" : "none");
