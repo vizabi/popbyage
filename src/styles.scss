@@ -29,6 +29,10 @@
       cursor: pointer;
     }
 
+    .vzb-bc-stack {
+      shape-rendering: crispEdges;
+    }
+
     .vzb-bc-locked-crop {
       pointer-events: none;
       fill: none;
