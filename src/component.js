@@ -150,9 +150,9 @@ const PopByAge = Component.extend("popbyage", {
           _this.model.entities_side.set("show", sideShow);
         }
         _this.model.entities_side.skipFilter = skipFilterSide;
+        _this.model.entities.set(entitiesProps);
         _this.model.entities_geodomain.skipFilter = (stackDim === _this.geoDomainDimension || _this.SIDEDIM === _this.geoDomainDimension) &&
           (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
-        _this.model.entities.set(entitiesProps);
         _this.model.entities_allpossible.set("dim", stackDim);
         _this.model.marker_allpossible.color.set("which", _this.model.marker.color.which);
       },
@@ -176,8 +176,6 @@ const PopByAge = Component.extend("popbyage", {
           }
         }
 //        const sideDim = _this.model.marker.side.use == "constant" ? null : _this.model.marker.side.which;
-        _this.model.entities_geodomain.skipFilter = (sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) &&
-          (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
         _this.model.marker.side.clearSideState();
         const skipFilterSide = sideDim !== _this.geoDomainDimension || _this.model.marker.color.which === _this.model.marker.side.which;
         if (!skipFilterSide) {
@@ -188,6 +186,8 @@ const PopByAge = Component.extend("popbyage", {
         entitiesSideProps["dim"] = sideDim;
 //        _this.model.entities_side.clearShow();
         _this.model.entities_side.set(entitiesSideProps);
+        _this.model.entities_geodomain.skipFilter = (sideDim === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) &&
+          (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
         if(_this.model.marker.color.which === _this.model.marker.side.which) {
           _this.model.entities.clearShow();
         }
