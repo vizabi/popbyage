@@ -86,6 +86,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
     },
     ui: {
       chart: {
+        mode: "smallMultiples",
         stacked: true,
         inpercent: false,
         flipSides: true,
