@@ -9,6 +9,11 @@
     .vzb-bc-axis-x,
     .vzb-bc-axis-y {
       @extend %vzb-chart-axis;
+      &.vzb-bc-axis-text-hidden {
+        .tick text {
+          visibility: hidden;
+        }
+      }
     }
     .vzb-bc-axis-x {
       .tick line {
