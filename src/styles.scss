@@ -121,6 +121,9 @@
     .vzb-bc-year {
       @extend %vzb-chart-axis-title-large;
     }
+    .vzb-bc-title {
+      font-size: 1.2em;
+    }
   }
   &.vzb-medium {
     .vzb-bc-axis-x,
@@ -135,6 +138,9 @@
     .vzb-bc-year {
       @extend %vzb-chart-axis-title-medium;
     }
+    .vzb-bc-title {
+      font-size: 1.1em;
+    }
   }
   &.vzb-small {
     .vzb-bc-axis-x,
@@ -148,6 +154,9 @@
     .vzb-bc-title,
     .vzb-bc-year {
       @extend %vzb-chart-axis-title-small;
+    }
+    .vzb-bc-title {
+      font-size: .9em;
     }
   }
   &.vzb-presentation {
