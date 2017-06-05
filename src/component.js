@@ -1460,7 +1460,7 @@ const PopByAge = Component.extend("popbyage", {
           .call(_this.xAxisLeft);
       });
 
-      const zeroTickEl = this.xAxisEl.select(".tick:first-child text");
+      const zeroTickEl = this.xAxisEl.select(".tick text");
       if (!zeroTickEl.empty()) {
         const zeroTickWidth = zeroTickEl.node().getBBox().width;
         zeroTickEl.attr("dx", -(this.activeProfile.centerWidth + zeroTickWidth) * 0.5);
