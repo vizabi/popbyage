@@ -1482,14 +1482,14 @@ const PopByAge = Component.extend("popbyage", {
     this.title
       .attr("x", (d, i) => this.twoSided ? translateX[i] - this.activeProfile.titlesSpacing : 0)
       .style("text-anchor", this.twoSided ? "end" : "")
-      .attr("y", -margin.top * 0.325);
+      .attr("y", -margin.top * 0.225);
     this.titleRight
       .attr("x", (d, i) => translateX[i] + this.activeProfile.titlesSpacing)
-      .attr("y", -margin.top * 0.325);
+      .attr("y", -margin.top * 0.225);
     this.titleCenter
       .attr("x", (d, i) => this.twoSided ? translateX[i] : _this.graphWidth[i] * 0.5)
       .style("text-anchor", "middle")
-      .attr("y", -margin.top * 0.05);
+      .attr("y", -margin.top * 0.035);
 
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
@@ -1509,7 +1509,7 @@ const PopByAge = Component.extend("popbyage", {
     }
 
     this.year.attr("x", isRTL ? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.4);
-    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.95);
+    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.6);
 
   },
 
