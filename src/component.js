@@ -223,6 +223,9 @@ const PopByAge = Component.extend("popbyage", {
             doReturn = true;
           }
         }
+        if (_this.SIDEDIM !== _this.model.entities_side.dim) {
+          doReturn = true;
+        }
         if (doReturn) return;
 
         _this._updateIndicators();
@@ -273,7 +276,7 @@ const PopByAge = Component.extend("popbyage", {
       "change:ui.chart.lockNonSelected": function(evt) {
         _this.lock = _this.model.ui.chart.lockNonSelected;
         if (_this.lock) {
-          if (!(_this.stackKeys.length <= 1 || _this.stackSkip)) {
+          if (!(_this.stackKeys.length <= 1 || _this.stackSkip || _this.smallMultiples)) {
             _this.model.ui.chart.lockNonSelected = 0;
             return;
           }
@@ -422,12 +425,12 @@ const PopByAge = Component.extend("popbyage", {
     this._updateGraphs(this.smallMultiples ? this.stackKeys : ["undefined"]);
     this._updateSideTitles();
 
-    if (this.lock && (this.stackKeys.length <= 1 || this.stackSkip)) {
+    if (this.lock && (this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples)) {
       this.yearLocked.text(this.translator("popbyage/locked") + " " + this.lock);
     } else {
       _this.model.ui.chart.lockNonSelected = 0;
     }
-
+    this.model.ui.chart.set("lockUnavailable", !(this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples), false, false);
     //this.model.time.set('value', _this.model.time.value, true, true);
 
     this.frame = null;
@@ -518,9 +521,16 @@ const PopByAge = Component.extend("popbyage", {
     this.model.marker.getFrame(this.model.time.parse("" + this.lock), (lockFrame, lockTime) => {
       if (!lockFrame) return;
       _this.lockedPaths.html("");
-      let total;
+      let total = {};
       if (this.ui.chart.inpercent) {
-        total = this.totals[lockTime];
+        if (this.smallMultiples) {
+          utils.forEach(this.stackKeys, (stackKey, i) => {
+            total[i] = this.totals[stackKey][lockTime];
+          });
+        } else {
+          total[0] = this.totals[lockTime];
+        }
+        if (!total[0]) return;
       }
       _this._makeOutlines(lockFrame.axis_x, total);
     });
@@ -987,7 +997,7 @@ const PopByAge = Component.extend("popbyage", {
     // }
 
     //this.barsData = ageData;
-    this.barsData = {};
+    this.barsData = [];
     let ageBars = this.bars.selectAll(".vzb-bc-bar")
       .data((d, i) => (_this.barsData[i] = ageData.map(m => {
         const p = {};
@@ -1150,27 +1160,30 @@ const PopByAge = Component.extend("popbyage", {
       .x(d => d.x)//_ + d.width_)
       .y((d, i) => firstBarOffsetY - barHeight * i)
 
-    const stackIndex = [0, 0];
+    
+    const pathsData = this.barsData.map((barsData, _i) => {
+      const stackIndex = [0, 0];
 
-    const pathsData = this.sideKeys.map((s, i) => {
-      if (_this.stackSkip) {
-        _this.barsData[0].side[i].stack.forEach((d, j) => {
-          if (d[_this.PREFIXEDSIDEDIM] === d[_this.PREFIXEDSTACKDIM]) {
-            stackIndex[i] = j;
-          }
+      return this.sideKeys.map((s, i) => {
+        if (_this.stackSkip) {
+          barsData[0].side[i].stack.forEach((d, j) => {
+            if (d[_this.PREFIXEDSIDEDIM] === d[_this.PREFIXEDSTACKDIM]) {
+              stackIndex[i] = j;
+            }
+          });
+        }
+        const data = {};
+        data.d = barsData.map(age => {
+          const r = {};
+          const x = utils.getValueMD(age.side[i].stack[stackIndex[i]], frame, KEYS);
+          r.x = x ? _this.xScale(x) : 0;
+            if (_this.ui.chart.inpercent) {
+              r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
+            }
+          return r;
         });
-      }
-      const data = {};
-      data.d = _this.barsData[0].map(age => {
-        const r = {};
-        const x = utils.getValueMD(age.side[i].stack[stackIndex[i]], frame, KEYS);
-        r.x = x ? _this.xScale(x) : 0;
-          if (_this.ui.chart.inpercent) {
-            r.x /= total[age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
-          }
-        return r;
+        return data;
       });
-      return data;
     });
 
     const data = this.bars.selectAll(".vzb-bc-side-left").selectAll(".vzb-bc-stack-0").data();
@@ -1180,14 +1193,16 @@ const PopByAge = Component.extend("popbyage", {
       shadeID: "shade"
     }) || "#000";//d3.hsl(color).darker(2);
 
-    const paths = this.lockedPaths.selectAll("path").data(pathsData);
-    paths.exit().remove();
-    paths.enter()
-      .append("path")
-      .merge(paths)
-      .attr("d", d => line(d.d))
-      .attr("stroke", "#000")//colorShade)
-      .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.activeProfile.centerWidth + ",0)") : "");
+    this.lockedPaths.each(function(d, _i) {
+      const paths = d3.select(this).selectAll("path").data(pathsData[_i]);
+      paths.exit().remove();
+      paths.enter()
+        .append("path")
+        .merge(paths)
+        .attr("d", (d, i) => line(d.d))
+        .attr("stroke", "#000")//colorShade)
+        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.activeProfile.centerWidth + ",0)") : "");
+    });
   },
 
   _setYear(timeValue) {
