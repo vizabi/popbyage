@@ -9,9 +9,9 @@
     "build"
   ],
   "devDependencies": {
-    "cross-env": "^4.0.0",
+    "cross-env": "^5.0.0",
     "css.escape": "^1.5.1",
-    "vizabi": "^0.21.0-20",
+    "vizabi": "^0.23.0-28",
     "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler"
   },
   "name": "vizabi-popbyage",
@@ -27,5 +27,5 @@
     "url": "https://github.com/vizabi/vizabi-popbyage/issues"
   },
   "homepage": "https://github.com/vizabi/vizabi-popbyage#readme",
-  "description": ""
+  "description": "Gapminder's population by age data visualisation tool. See it in action on gapminder.org/tools"
 }
