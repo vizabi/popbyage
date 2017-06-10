@@ -107,12 +107,29 @@
         fill: $vzb-color-black;
       }
     }
+    .vzb-bc-tooltip {
+      @extend %vzb-chart-tooltip;
+      @include rtl {
+        text {
+          direction: rtl;
+          text-anchor: start;
+          unicode-bidi: embed;
+        }
+      }
+      // .vzb-tooltip-glow {
+      //   stroke-width: 8px;
+      //   fill: none;
+      //   opacity: 0;
+      // }
+    }
+    
   }
   &.vzb-large {
     .vzb-bc-axis-x,
     .vzb-bc-axis-y,
     .vzb-bc-axis-x-info,
     .vzb-bc-axis-y-info,
+    .vzb-bc-tooltip,
     .vzb-bc-label > .vzb-bc-age {
       @extend %vzb-chart-ticks-large;
     }
@@ -124,12 +141,16 @@
     .vzb-bc-title {
       font-size: 1.2em;
     }
+    .vzb-bc-year-now {
+      visibility: hidden;
+    }
   }
   &.vzb-medium {
     .vzb-bc-axis-x,
     .vzb-bc-axis-y,
     .vzb-bc-axis-x-info,
     .vzb-bc-axis-y-info,
+    .vzb-bc-tooltip,
     .vzb-bc-label > .vzb-bc-age {
       @extend %vzb-chart-ticks-medium;
     }
@@ -147,6 +168,7 @@
     .vzb-bc-axis-y,
     .vzb-bc-axis-x-info,
     .vzb-bc-axis-y-info,
+    .vzb-bc-tooltip,
     .vzb-bc-label > .vzb-bc-age {
       @extend %vzb-chart-ticks-small;
     }
@@ -158,6 +180,9 @@
     .vzb-bc-title {
       font-size: .9em;
     }
+    .vzb-bc-year-locked {
+      visibility: hidden;
+    }
   }
   &.vzb-presentation {
 
@@ -167,11 +192,17 @@
       .vzb-bc-axis-y,
       .vzb-bc-tooltip,
       .vzb-bc-header {
+        .vzb-bc-axis-x-title {
+          text {
+            font-size: $vzb-font-size-large;
+          }          
+        }
         text {
           font-size: $vzb-font-size-largest;
         }
       }
 
+      .vzb-bc-title,
       .vzb-bc-labels {
         font-size: $vzb-font-size-largest;
       }

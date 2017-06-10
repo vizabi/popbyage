@@ -2,7 +2,8 @@ const {
   utils,
   Component,
   helpers: {
-    "d3.axisWithLabelPicker": axisSmart
+    "d3.axisWithLabelPicker": axisSmart,
+    "textEllipsis": TextEllipsis
   },
   iconset: {
     question: iconQuestion
@@ -292,6 +293,8 @@ const PopByAge = Component.extend("popbyage", {
     //contructor is the same as any component
     this._super(config, context);
 
+    this.textEllipsis = new TextEllipsis(this);
+
     this.xScale = null;
     this.yScale = null;
     this.cScale = null;
@@ -334,6 +337,8 @@ const PopByAge = Component.extend("popbyage", {
     const _this = this;
     this.el = (this.el) ? this.el : d3.select(this.element);
     this.element = this.el;
+
+    this.textEllipsis.setTooltip(this.element.select(".vzb-bc-tooltip"));
 
     this.interaction = this._interaction();
 
@@ -475,6 +480,7 @@ const PopByAge = Component.extend("popbyage", {
       .attr("class", "vzb-bc-graph")
       .html(this.graphTemplate);
 
+    this.element.select(".vzb-bc-tooltip").raise();
     this.graph = this.element.selectAll(".vzb-bc-graph");
     this.yAxisEl = this.graph.select(".vzb-bc-axis-y");
     this.xAxisEl = this.graph.select(".vzb-bc-axis-x");
@@ -736,15 +742,15 @@ const PopByAge = Component.extend("popbyage", {
     
     this.titleRight.classed("vzb-hidden", !this.twoSided);
     if (this.twoSided) {
-      this.title.text(sideItems[this.sideKeys[1]]);
-      this.titleRight.text(sideItems[this.sideKeys[0]]);
+      this.title.text(sideItems[this.sideKeys[1]]).call(this.textEllipsis.clear);
+      this.titleRight.text(sideItems[this.sideKeys[0]]).call(this.textEllipsis.clear);;
     } else {
       const title = this.sideKeys.length && sideItems[this.sideKeys[0]] ? sideItems[this.sideKeys[0]] : "";
-      this.title.text(title);
+      this.title.text(title).call(this.textEllipsis.clear);;
     }
 
     if (this.smallMultiples) {
-      this.titleCenter.each(function(d, i) {
+      this.titleCenter.call(this.textEllipsis.clear).each(function(d, i) {
         d3.select(this).text(_this.stackItems[_this.stackKeys[i]]);
       });
     } else {
@@ -1265,8 +1271,13 @@ const PopByAge = Component.extend("popbyage", {
         return text + ": " + formatter(value);
       })
       .attr("x", (left ? -1 : 1) * (_this.activeProfile.centerWidth * 0.5 + 7))
+      .attr("dx", 0)
       .classed("vzb-text-left", left);
-
+    const bbox = label.node().getBBox();
+    const transform = _this.element.node().getScreenCTM().inverse().multiply(label.nodes()[d.i].getScreenCTM());
+    const overDrawLeft = Math.max(-bbox.x - transform.e, 0);
+    const overDrawRight = Math.min(_this.fullWidth - bbox.x - bbox.width - transform.e, 0);    
+    label.selectAll(".vzb-bc-age").attr("dx", overDrawLeft + overDrawRight);
     label.classed("vzb-hovered", (_d, i) => i === d.i ? true : false);
   },
 
@@ -1293,11 +1304,11 @@ const PopByAge = Component.extend("popbyage", {
 
   presentationProfileChanges: {
     medium: {
-      margin: { right: 80, bottom: 80 },
+      margin: { top: 150, right: 50, bottom: 60, between: 50 },
       infoElHeight: 32
     },
     large: {
-      margin: { top: 100, right: 100, left: 100, bottom: 80 },
+      margin: { top: 150, right: 70, left: 100, bottom: 70, between: 50 },
       infoElHeight: 32
     }
   },
@@ -1308,7 +1319,7 @@ const PopByAge = Component.extend("popbyage", {
         top: 70,
         right: 20,
         left: 40,
-        bottom: 40,
+        bottom: 20,
         between: 20
       },
       infoElHeight: 16,
@@ -1318,9 +1329,9 @@ const PopByAge = Component.extend("popbyage", {
     "medium": {
       margin: {
         top: 80,
-        right: 60,
+        right: 40,
         left: 60,
-        bottom: 40,
+        bottom: 30,
         between: 30
       },
       infoElHeight: 20,
@@ -1332,7 +1343,7 @@ const PopByAge = Component.extend("popbyage", {
         top: 100,
         right: 60,
         left: 60,
-        bottom: 40,
+        bottom: 30,
         between: 30
       },
       infoElHeight: 22,
@@ -1353,6 +1364,7 @@ const PopByAge = Component.extend("popbyage", {
     //stage
     this.height = (parseInt(this.element.style("height"), 10) - margin.top - margin.bottom) || 0;
     this.width = (parseInt(this.element.style("width"), 10) - margin.left - margin.right) || 0;
+    this.fullWidth = parseInt(this.element.style("width"), 10) || 0;
     this.graphWidth = this.getGraphWidth(this.width, margin.between);
 
     if (this.height <= 0 || this.width <= 0) return utils.warn("Pop by age resize() abort: vizabi container is too little or has display:none");
@@ -1435,6 +1447,11 @@ const PopByAge = Component.extend("popbyage", {
       d3.select(this)
         .attr("transform", "translate(" + translateX[i] + "," + _this.height + ")")
         .call(_this.xAxis);
+      const zeroTickEl = d3.select(this).selectAll(".tick text");
+      if (zeroTickEl.size() > 1) {
+        const zeroTickWidth = zeroTickEl.node().getBBox().width;
+        d3.select(zeroTickEl.node()).attr("dx", -(_this.activeProfile.centerWidth + zeroTickWidth) * (_this.twoSided ? 0.5 : 0.35));
+      }
     });
 
     this.xAxisEl.select(".tick line").classed("vzb-hidden", true);
@@ -1458,17 +1475,8 @@ const PopByAge = Component.extend("popbyage", {
         d3.select(this)
           .attr("transform", "translate(0," + _this.height + ")")
           .call(_this.xAxisLeft);
-      });
-
-      const zeroTickEl = this.xAxisEl.select(".tick text");
-      if (!zeroTickEl.empty()) {
-        const zeroTickWidth = zeroTickEl.node().getBBox().width;
-        zeroTickEl.attr("dx", -(this.activeProfile.centerWidth + zeroTickWidth) * 0.5);
-      }
-
-      //hide left axis zero tick
-      this.xAxisLeftEl.each(function() {
-        const tickNodes = d3.select(this).selectAll(".tick").nodes();
+        //hide left axis zero tick
+        const tickNodes = d3.select(this).selectAll(".tick").classed("vzb-hidden", false).nodes();
         d3.select(tickNodes[tickNodes.length - 1]).classed("vzb-hidden", true);
       });
     }
@@ -1479,17 +1487,28 @@ const PopByAge = Component.extend("popbyage", {
     this.lockedPaths.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
     this.labels.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
 
+    const titleSpace = (i) => (translateX[i] - this.activeProfile.titlesSpacing) < 0 ? _this.activeProfile.centerWidth * 0.5 : _this.activeProfile.titlesSpacing;
+
     this.title
-      .attr("x", (d, i) => this.twoSided ? translateX[i] - this.activeProfile.titlesSpacing : 0)
+      .attr("x", (d, i) => this.twoSided ? translateX[i] - titleSpace(i) : 0)
       .style("text-anchor", this.twoSided ? "end" : "")
-      .attr("y", -margin.top * 0.225);
+      .attr("y", -margin.top * 0.225)
+      .each(function(d, i) {
+        _this.textEllipsis.wrap(this, _this.twoSided ? (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5 : _this.graphWidth[i] +  margin.between)
+      });
     this.titleRight
-      .attr("x", (d, i) => translateX[i] + this.activeProfile.titlesSpacing)
-      .attr("y", -margin.top * 0.225);
+      .attr("x", (d, i) => translateX[i] + titleSpace(i))
+      .attr("y", -margin.top * 0.225)
+      .each(function(d, i) {
+        _this.textEllipsis.wrap(this, (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5)
+      });
     this.titleCenter
       .attr("x", (d, i) => this.twoSided ? translateX[i] : _this.graphWidth[i] * 0.5)
       .style("text-anchor", "middle")
-      .attr("y", -margin.top * 0.035);
+      .attr("y", -margin.top * 0.035)
+      .each(function(d, i) {
+        _this.textEllipsis.wrap(this, _this.graphWidth[i] +  margin.between)
+      });
 
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
@@ -1508,8 +1527,8 @@ const PopByAge = Component.extend("popbyage", {
         + (t.translateY - infoElHeight * 0.8) + ")");
     }
 
-    this.year.attr("x", isRTL ? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.4);
-    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * 0.6);
+    this.year.attr("x", isRTL ? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * (this.getLayoutProfile() === "medium" ? 0.35 : 0.4));
+    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * (this.getLayoutProfile() === "large" ? 0.4 : 0.55));
 
   },
 
