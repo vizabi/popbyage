@@ -436,7 +436,6 @@ const PopByAge = Component.extend("popbyage", {
       _this.model.ui.chart.lockNonSelected = 0;
     }
     this.model.ui.chart.set("lockUnavailable", !(this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples), false, false);
-    //this.model.time.set('value', _this.model.time.value, true, true);
 
     this.frame = null;
     this.frameAllColor = {};
@@ -468,6 +467,7 @@ const PopByAge = Component.extend("popbyage", {
         _this._updateEntities(true);
         _this.updateBarsOpacity();
         _this._redrawLocked();
+        _this.model.time.set('value', _this.model.time.value, true, true);
       });
     });
 
