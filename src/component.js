@@ -1331,7 +1331,7 @@ const PopByAge = Component.extend("popbyage", {
 
   presentationProfileChanges: {
     medium: {
-      margin: { top: 120, right: 50, bottom: 60, between: 30 },
+      margin: { top: 120, right: 50, left:80, bottom: 60, between: 30 },
       infoElHeight: 32
     },
     large: {
