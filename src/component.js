@@ -3,6 +3,7 @@ const {
   Component,
   helpers: {
     "d3.axisWithLabelPicker": axisSmart,
+    "d3.dynamicBackground": DynamicBackground,
     "textEllipsis": TextEllipsis
   },
   iconset: {
@@ -61,6 +62,10 @@ const PopByAge = Component.extend("popbyage", {
       "change:time.value": function(evt) {
         if (!_this._readyOnce) return;
         if (_this.model.time.step != 1 && !_this.snapped && !_this.model.time.playing && !_this.model.time.dragging) {
+          if(_this.updateStartEnd(_this.model.time.formatDate(_this.model.time.value))) {
+            _this.ready();
+            return;
+          };
           let next = d3.bisectLeft(_this.timeSteps, _this.model.time.value);
           if (next != 0 && (_this.timeSteps[next] - _this.model.time.value)) {
             _this.snapped = true;
@@ -281,7 +286,7 @@ const PopByAge = Component.extend("popbyage", {
             _this.model.ui.chart.lockNonSelected = 0;
             return;
           }
-          _this.yearLocked.text(_this.translator("popbyage/locked") + " " + _this.lock);
+          _this.yearLocked.text(" " + _this.lock);//🔒
           _this._makeOutlines(_this.frameAxisX, _this.total);
         } else {
           _this.yearLocked.text("");
@@ -320,6 +325,28 @@ const PopByAge = Component.extend("popbyage", {
   //   this.model.marker_side.hook_total.set(obj);
   // },
 
+  updateStartEnd(timeYear) {
+    const timeModel = this.model.time;
+    const startYear = +timeModel.formatDate(timeModel.start);
+    const endYear = +timeModel.formatDate(timeModel.end);
+    const startOriginYear = +timeModel.startOrigin || startYear;
+    const endOriginYear = +timeModel.endOrigin || endYear;
+    const groupBy = this.groupBy;
+    let newStartYear = startOriginYear + (+timeYear - startOriginYear) % groupBy;
+    let newEndYear = endOriginYear - (endOriginYear - timeYear) % groupBy;
+    if (newStartYear !== startYear || newEndYear !== endYear) {
+      timeModel.set({
+        start: timeModel.parse("" + newStartYear),
+        end: timeModel.parse("" + newEndYear),
+        startSelected: timeModel.parse("" + newStartYear),
+        endSelected: timeModel.parse("" + newEndYear)
+      });
+      this.timeSteps = timeModel.getAllSteps();
+      return true;
+    }
+    return false;
+  },
+
   checkDimensions() {
     const stackDim = this.model.entities.dim;
     const sideDim = this.model.entities_side.dim;
@@ -347,7 +374,9 @@ const PopByAge = Component.extend("popbyage", {
 
     this.xTitleEl = this.element.select(".vzb-bc-axis-x-title");
     this.xInfoEl = this.element.select(".vzb-bc-axis-x-info");
-    this.year = this.element.select(".vzb-bc-year-now");
+    this.yearEl = this.element.select(".vzb-bc-year-now");
+    this.year = new DynamicBackground(this.yearEl); 
+    this.year.setText(this.model.time.formatDate(this.model.time.value));
     this.yearLocked = this.element.select(".vzb-bc-year-locked");
 
     this.someSelected = (this.model.marker.select.length > 0);
@@ -431,7 +460,7 @@ const PopByAge = Component.extend("popbyage", {
     this._updateSideTitles();
 
     if (this.lock && (this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples)) {
-      this.yearLocked.text(this.translator("popbyage/locked") + " " + this.lock);
+      this.yearLocked.text("" + this.lock);
     } else {
       _this.model.ui.chart.lockNonSelected = 0;
     }
@@ -462,11 +491,11 @@ const PopByAge = Component.extend("popbyage", {
       _this._getLimits();
 
       _this.resize();
-      this.model.marker_allpossible.getFrame(_this.model.time.value, apFrame => {
+      _this.model.marker_allpossible.getFrame(_this.model.time.value, apFrame => {
         _this.frameAllColor = apFrame.color || {};
         _this._updateEntities(true);
         _this.updateBarsOpacity();
-        _this._redrawLocked();
+        //_this._redrawLocked();
         _this.model.time.set('value', _this.model.time.value, true, true);
       });
     });
@@ -502,7 +531,7 @@ const PopByAge = Component.extend("popbyage", {
     return function() {
       const groupBy = _this.groupBy;
       _this.model.marker.getFrame(null, frames => {
-        if(groupBy !== _this.groupBy) return;
+        if(!frames || groupBy !== _this.groupBy) return;
         if (_this.smallMultiples) {
           utils.forEach(_this.stackKeys, (stackKey, i) => {
             _this._createLimits(frames, stackKey);
@@ -531,10 +560,10 @@ const PopByAge = Component.extend("popbyage", {
       if (this.ui.chart.inpercent) {
         if (this.smallMultiples) {
           utils.forEach(this.stackKeys, (stackKey, i) => {
-            total[i] = this.totals[stackKey][lockTime];
+            total[i] = this.totals[stackKey][lockTime] ? this.totals[stackKey][lockTime] : this._interpolateBetweenTotals(this.timeSteps, this.totals[stackKey], lockTime);
           });
         } else {
-          total[0] = this.totals[lockTime];
+          total[0] = this.totals[lockTime] ? this.totals[lockTime] : this._interpolateBetweenTotals(this.timeSteps, this.totals, lockTime);
         }
         if (!total[0]) return;
       }
@@ -1073,7 +1102,7 @@ const PopByAge = Component.extend("popbyage", {
     stackBars = stackBars.enter().append("rect")
       .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
       .attr("y", 0)
-      .attr("height", barHeight)
+      .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
       .attr("fill", d => _this.cScale(_this.frameAllColor[d[prefixedStackDim]] || d[prefixedStackDim]))
       //.attr("width", _attributeUpdaters._newWidth)
       .attr("x", _attributeUpdaters._newX)
@@ -1131,23 +1160,20 @@ const PopByAge = Component.extend("popbyage", {
         let age = parseInt(d[shiftedAgeDim], 10);
 
         if (groupBy > 1) {
-          age = age + "-to-" + (age + groupBy - 1);
+          const nextAge = (age + groupBy - 1);
+          age = age + "-to-" + (nextAge > domain[1] ? domain[1] : nextAge);
         }
 
         d["text"] = age + yearOlds;
       })
-      .attr("y", (d, i) => firstBarOffsetY - (d[shiftedAgeDim] - domain[0]) * oneBarHeight - 10);
+      .attr("y", (d, i) => firstBarOffsetY - (d[shiftedAgeDim] - domain[0]) * oneBarHeight - 10)
+      .attr("dy", (d, i) => (d[shiftedAgeDim] + groupBy) > domain[1] ? (groupBy - domain[1] + d[shiftedAgeDim]) / groupBy * barHeight : 0);
     // .style("fill", function(d) {
     //   var color = _this.cScale(values.color[d[ageDim]]);
     //   return d3.rgb(color).darker(2);
     // });
 
-    if (duration) {
-      this.year.transition().duration(duration).ease(d3.easeLinear)
-        .on("end", this._setYear(time.value));
-    } else {
-      this.year.interrupt().text(time.formatDate(time.value)).transition();
-    }
+    this.year.setText(this.model.time.formatDate(time.value), this.duration);
   },
 
   _makeOutlines(frame, total) {
@@ -1159,12 +1185,13 @@ const PopByAge = Component.extend("popbyage", {
         //if (_this.geoLess)
       });
 
+    const groupBy = this.groupBy;
     const barHeight = this.barHeight;
     const firstBarOffsetY = this.firstBarOffsetY + barHeight;
 
     const line = d3.line().curve(d3.curveStepBefore)
       .x(d => d.x)//_ + d.width_)
-      .y((d, i) => firstBarOffsetY - barHeight * i)
+      .y((d, i) => firstBarOffsetY - barHeight * i  - (groupBy > 2 ? 1 : 0));
 
     
     const pathsData = this.barsData.map((barsData, _i) => {
@@ -1304,11 +1331,11 @@ const PopByAge = Component.extend("popbyage", {
 
   presentationProfileChanges: {
     medium: {
-      margin: { top: 150, right: 50, bottom: 60, between: 50 },
+      margin: { top: 120, right: 50, bottom: 60, between: 30 },
       infoElHeight: 32
     },
     large: {
-      margin: { top: 150, right: 70, left: 100, bottom: 70, between: 50 },
+      margin: { top: 120, right: 70, left: 100, bottom: 70, between: 30 },
       infoElHeight: 32
     }
   },
@@ -1316,11 +1343,11 @@ const PopByAge = Component.extend("popbyage", {
   profiles: {
     "small": {
       margin: {
-        top: 70,
+        top: 50,
         right: 20,
         left: 40,
         bottom: 20,
-        between: 20
+        between: 10
       },
       infoElHeight: 16,
       centerWidth: 2,
@@ -1328,11 +1355,11 @@ const PopByAge = Component.extend("popbyage", {
     },
     "medium": {
       margin: {
-        top: 80,
+        top: 70,
         right: 40,
         left: 60,
-        bottom: 30,
-        between: 30
+        bottom: 20,
+        between: 20
       },
       infoElHeight: 20,
       centerWidth: 2,
@@ -1340,11 +1367,11 @@ const PopByAge = Component.extend("popbyage", {
     },
     "large": {
       margin: {
-        top: 100,
+        top: 80,
         right: 60,
         left: 60,
         bottom: 30,
-        between: 30
+        between: 20
       },
       infoElHeight: 22,
       centerWidth: 2,
@@ -1361,8 +1388,9 @@ const PopByAge = Component.extend("popbyage", {
     const margin = this.activeProfile.margin;
     const infoElHeight = this.activeProfile.infoElHeight;
 
+    const deltaMarginTop = this.sideSkip ? margin.top * 0.23 : 0;
     //stage
-    this.height = (parseInt(this.element.style("height"), 10) - margin.top - margin.bottom) || 0;
+    this.height = (parseInt(this.element.style("height"), 10) + deltaMarginTop - margin.top - margin.bottom) || 0;
     this.width = (parseInt(this.element.style("width"), 10) - margin.left - margin.right) || 0;
     this.fullWidth = parseInt(this.element.style("width"), 10) || 0;
     this.graphWidth = this.getGraphWidth(this.width, margin.between);
@@ -1373,7 +1401,7 @@ const PopByAge = Component.extend("popbyage", {
     let _prevSum = 0;
     const graphWidthSum = this.graphWidth.map(width => {_prevSum = _sum; _sum += width; return _prevSum;});
     this.graph
-      .attr("transform", (d, i) => "translate(" + (margin.left + margin.between * i + graphWidthSum[i]) + "," + margin.top + ")");
+      .attr("transform", (d, i) => "translate(" + (margin.left + margin.between * i + graphWidthSum[i]) + "," + (margin.top - deltaMarginTop) + ")");
 
     this.barsCrop
       .attr("width", (d, i) => this.graphWidth[i])
@@ -1394,7 +1422,7 @@ const PopByAge = Component.extend("popbyage", {
     const barHeight = this.barHeight = this.oneBarHeight * groupBy; // height per bar is total domain height divided by the number of possible markers in the domain
     this.firstBarOffsetY = this.height - this.barHeight;
 
-    if (this.stackBars) this.stackBars.attr("height", barHeight);
+    if (this.stackBars) this.stackBars.attr("height", barHeight - (groupBy > 2 ? 1 : 0));
 
     if (this.sideBars) this.sideBars
       .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.activeProfile.centerWidth + ",0)") : "");
@@ -1404,9 +1432,13 @@ const PopByAge = Component.extend("popbyage", {
     //apply scales to axes and redraw
     this.yScale.range([this.height, 0]);
 
+    const yScaleCopy = this.yScale.copy();
+    if (groupBy > 2) {
+      yScaleCopy.ticks = () => d3.range(domain[0], domain[1] + 1, groupBy);
+    }
+
     this.yAxisEl.each(function(d, i) {
-    
-      _this.yAxis.scale(_this.yScale.copy().range([_this.height, 0]))
+      _this.yAxis.scale(yScaleCopy.range([_this.height, 0]))
         .tickSizeInner(-_this.graphWidth[i])
         .tickSizeOuter(0)
         .tickPadding(6)
@@ -1414,7 +1446,9 @@ const PopByAge = Component.extend("popbyage", {
         .labelerOptions({
           scaleType: _this.model.marker.axis_y.scaleType,
           toolMargin: margin,
-          limitMaxTickNumber: 19
+          limitMaxTickNumber: 19,
+          fitIntoScale: "optimistic",
+          isPivotAuto: false
         });
       
       d3.select(this).attr("transform", "translate(" + 0 + ",0)")
@@ -1450,7 +1484,7 @@ const PopByAge = Component.extend("popbyage", {
       const zeroTickEl = d3.select(this).selectAll(".tick text");
       if (zeroTickEl.size() > 1) {
         const zeroTickWidth = zeroTickEl.node().getBBox().width;
-        d3.select(zeroTickEl.node()).attr("dx", -(_this.activeProfile.centerWidth + zeroTickWidth) * (_this.twoSided ? 0.5 : 0.35));
+        d3.select(zeroTickEl.node()).attr("dx", -(_this.activeProfile.centerWidth + zeroTickWidth) * (_this.twoSided ? 0.5 : 0.15));
       }
     });
 
@@ -1492,27 +1526,27 @@ const PopByAge = Component.extend("popbyage", {
     this.title
       .attr("x", (d, i) => this.twoSided ? translateX[i] - titleSpace(i) : 0)
       .style("text-anchor", this.twoSided ? "end" : "")
-      .attr("y", -margin.top * 0.225)
+      .attr("y", -margin.top * 0.275 - deltaMarginTop)
       .each(function(d, i) {
         _this.textEllipsis.wrap(this, _this.twoSided ? (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5 : _this.graphWidth[i] +  margin.between)
       });
     this.titleRight
       .attr("x", (d, i) => translateX[i] + titleSpace(i))
-      .attr("y", -margin.top * 0.225)
+      .attr("y", -margin.top * 0.275 - deltaMarginTop)
       .each(function(d, i) {
         _this.textEllipsis.wrap(this, (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5)
       });
     this.titleCenter
       .attr("x", (d, i) => this.twoSided ? translateX[i] : _this.graphWidth[i] * 0.5)
       .style("text-anchor", "middle")
-      .attr("y", -margin.top * 0.035)
+      .attr("y", (-margin.top - deltaMarginTop)* 0.035 )
       .each(function(d, i) {
         _this.textEllipsis.wrap(this, _this.graphWidth[i] +  margin.between)
       });
 
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
-      .attr("transform", "translate(" + (isRTL ? margin.left + this.width : margin.left * 0.4) + "," + (margin.top * 0.4) + ")");
+      .attr("transform", "translate(" + (isRTL ? margin.left + this.width : margin.left * 0.4) + "," + (margin.top * 0.35) + ")");
 
     if (this.xInfoEl.select("svg").node()) {
       const titleBBox = this.xTitleEl.node().getBBox();
@@ -1527,8 +1561,20 @@ const PopByAge = Component.extend("popbyage", {
         + (t.translateY - infoElHeight * 0.8) + ")");
     }
 
-    this.year.attr("x", isRTL ? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * (this.getLayoutProfile() === "medium" ? 0.35 : 0.4));
-    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left).attr("y", margin.top * (this.getLayoutProfile() === "large" ? 0.4 : 0.55));
+    const yearLabelOptions = {
+      topOffset: this.ui.presentation ? 25 : this.getLayoutProfile() === "small" ? 10 : 15,
+      rightOffset: this.getLayoutProfile() === "small" ? 5 : 10,
+      xAlign: "right",
+      yAlign: "top",
+      heightRatio: this.ui.presentation ? 0.5 : 0.5,
+      //widthRatio: this.getLayoutProfile() === "large" ? 3 / 8 : 5 / 10
+    };
+
+    //year resized
+    this.year
+      .setConditions(yearLabelOptions)
+      .resize(this.fullWidth, margin.top);
+    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left + margin.right - 10).attr("y", (margin.top - deltaMarginTop) * (this.getLayoutProfile() === "large" ? 1.27 : 1.27));
 
   },
 

@@ -24,6 +24,11 @@
         pointer-events: none;
       }
     }
+    .vzb-bc-axis-y {
+      .tick text {
+        font-size: 1.3em;
+      }
+    }
     .vzb-bc-axis-x-title,
     .vzb-bc-axis-y-title {
       @extend %vzb-chart-axis-title;
@@ -103,9 +108,20 @@
       }
       fill: $vzb-color-grey;
       text-anchor: end;
+      -webkit-touch-callout: none;
+      user-select: none;
+      pointer-events: none;
       &.vzb-bc-year-locked {
         fill: $vzb-color-black;
       }
+    }
+    .vzb-bc-year-now {
+      @include opacity(.6);
+      fill: $vzb-color-primary;
+      text-anchor: middle;
+      -webkit-touch-callout: none;
+      user-select: none;
+      pointer-events: none;
     }
     .vzb-bc-tooltip {
       @extend %vzb-chart-tooltip;
