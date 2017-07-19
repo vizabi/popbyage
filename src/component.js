@@ -1455,6 +1455,7 @@ const PopByAge = Component.extend("popbyage", {
         .call(_this.yAxis)
         .classed("vzb-bc-axis-text-hidden", !_this.getYAxisVisibility(i));
     });
+    this.yAxisEl.select(".tick line").classed("vzb-hidden", true);
 
     const maxRange = _this.twoSided ? ((_this.graphWidth[0] - _this.activeProfile.centerWidth) * 0.5) : _this.graphWidth[0];
     this.xScale.range([0, maxRange]);
