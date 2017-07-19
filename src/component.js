@@ -59,10 +59,30 @@ const PopByAge = Component.extend("popbyage", {
 
     const _this = this;
     this.model_binds = {
+      "change:time.startSelected": function(evt) {
+        _this.model.time.set({
+          startSelected: new Date(_this.timeSteps[0])
+        }, false, false);
+
+      },
+      "change:time.endSelected": function(evt) {
+        _this.model.time.set({
+          endSelected: new Date(_this.timeSteps[_this.timeSteps.length - 1])
+        }, false, false);
+      },
       "change:time.value": function(evt) {
         if (!_this._readyOnce) return;
         if (_this.model.time.step != 1 && !_this.snapped && !_this.model.time.playing && !_this.model.time.dragging) {
-          if(_this.updateStartEnd(_this.model.time.formatDate(_this.model.time.value))) {
+          if(_this.snapTime) {
+            if(+_this.snapTime - _this.model.time.value === 0) {
+              _this.snapTime = null;
+              _this.model.time.snap();
+            } else {
+              _this.model.time.value = new Date(_this.snapTime);
+            }
+            return;
+          }
+          if(_this.updateStartEnd(_this.model.time.value, _this.groupBy)) {
             _this.ready();
             return;
           };
@@ -85,7 +105,10 @@ const PopByAge = Component.extend("popbyage", {
               _this._updateEntities();
               _this.updateBarsOpacity();
             });
+          } else if(_this.model.time.value < _this.model.time.startSelected || _this.model.time.value > _this.model.time.endSelected) {
+            _this.snapTime = _this.model.time.value;
           } else {
+            _this.snapTime = null;
             const nextIndex = d3.bisectLeft(_this.timeSteps, _this.model.time.value);
             const prevFrameTime = _this.timeSteps[nextIndex - 1];
             const nextFrameTime = _this.timeSteps[nextIndex];
@@ -253,7 +276,6 @@ const PopByAge = Component.extend("popbyage", {
         _this.groupBy = +_this.model.entities_age.grouping || 1;
         _this.model.time.step = _this.groupBy;
         _this.timeSteps = _this.model.time.getAllSteps();
-        _this.model.time.end = _this.timeSteps[_this.timeSteps.length - 1];
         _this.model.ui.chart.lockNonSelected = 0;
         _this.labels.html("");
       },
@@ -325,26 +347,27 @@ const PopByAge = Component.extend("popbyage", {
   //   this.model.marker_side.hook_total.set(obj);
   // },
 
-  updateStartEnd(timeYear) {
+  updateStartEnd(time, groupBy) {
     const timeModel = this.model.time;
+    const timeYear = timeModel.formatDate(time);
     const startYear = +timeModel.formatDate(timeModel.start);
-    const endYear = +timeModel.formatDate(timeModel.end);
-    const startOriginYear = +timeModel.startOrigin || startYear;
-    const endOriginYear = +timeModel.endOrigin || endYear;
-    const groupBy = this.groupBy;
-    let newStartYear = startOriginYear + (+timeYear - startOriginYear) % groupBy;
-    let newEndYear = endOriginYear - (endOriginYear - timeYear) % groupBy;
-    if (newStartYear !== startYear || newEndYear !== endYear) {
-      timeModel.set({
-        start: timeModel.parse("" + newStartYear),
-        end: timeModel.parse("" + newEndYear),
-        startSelected: timeModel.parse("" + newStartYear),
-        endSelected: timeModel.parse("" + newEndYear)
-      });
+    const offset = (+timeYear - startYear) % groupBy;
+    if (offset !== timeModel.offset) {
+      timeModel.set("offset", offset, false, false);
       this.timeSteps = timeModel.getAllSteps();
+      timeModel.set({
+        startSelected: new Date(this.timeSteps[0]),
+        endSelected: new Date(this.timeSteps[this.timeSteps.length - 1])
+      }, false, false);
       return true;
     }
     return false;
+  },
+
+  getTimeOffset(timeModel, groupBy) {
+    const startYear = +timeModel.formatDate(timeModel.start);
+    const timeYear = +timeModel.formatDate(timeModel.value);
+    return (+timeYear - startYear) % groupBy;
   },
 
   checkDimensions() {
@@ -437,6 +460,7 @@ const PopByAge = Component.extend("popbyage", {
 
     this.lock = _this.model.ui.chart.lockNonSelected;
 
+    this.updateStartEnd(this.model.time.value, this.groupBy);
     this.timeSteps = this.model.time.getAllSteps();
     //this.model.time.end = this.timeSteps[this.timeSteps.length - 1];
 
@@ -496,7 +520,7 @@ const PopByAge = Component.extend("popbyage", {
         _this._updateEntities(true);
         _this.updateBarsOpacity();
         //_this._redrawLocked();
-        _this.model.time.set('value', _this.model.time.value, true, true);
+        //_this.model.time.set('value', _this.model.time.value, true, true);
       });
     });
 
