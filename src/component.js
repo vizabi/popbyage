@@ -464,7 +464,7 @@ const PopByAge = Component.extend("popbyage", {
     this.timeSteps = this.model.time.getAllSteps();
     //this.model.time.end = this.timeSteps[this.timeSteps.length - 1];
 
-    this.shiftScale = d3.scale.linear()
+    this.shiftScale = d3.scaleLinear()
       .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
       .range([0, this.timeSteps.length - 1]);
 
