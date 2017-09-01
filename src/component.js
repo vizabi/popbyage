@@ -60,12 +60,14 @@ const PopByAge = Component.extend("popbyage", {
     const _this = this;
     this.model_binds = {
       "change:time.startSelected": function(evt) {
+        if (!_this._readyOnce) return;
         _this.model.time.set({
           startSelected: new Date(_this.timeSteps[0])
         }, false, false);
 
       },
       "change:time.endSelected": function(evt) {
+        if (!_this._readyOnce) return;
         _this.model.time.set({
           endSelected: new Date(_this.timeSteps[_this.timeSteps.length - 1])
         }, false, false);
@@ -314,6 +316,10 @@ const PopByAge = Component.extend("popbyage", {
           _this.yearLocked.text("");
           _this.lockedPaths.html("");
         }
+      },
+      "ready:marker": function(evt) {
+        if (!_this._readyOnce) return;
+        _this.updateStartEnd(_this.model.time.value, _this.groupBy);
       }
     };
 
@@ -460,9 +466,7 @@ const PopByAge = Component.extend("popbyage", {
 
     this.lock = _this.model.ui.chart.lockNonSelected;
 
-    this.updateStartEnd(this.model.time.value, this.groupBy);
     this.timeSteps = this.model.time.getAllSteps();
-    //this.model.time.end = this.timeSteps[this.timeSteps.length - 1];
 
     this.shiftScale = d3.scaleLinear()
       .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
