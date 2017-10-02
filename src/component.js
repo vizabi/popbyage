@@ -811,7 +811,8 @@ const PopByAge = Component.extend("popbyage", {
         d3.select(this).text(_this.stackItems[_this.stackKeys[i]]);
       });
     } else {
-      this.titleCenter.text("");
+      const title = this.stackKeys.length && this.stackItems[this.stackKeys[0]] ? this.stackItems[this.stackKeys[0]] : "";
+      this.titleCenter.text(title).call(this.textEllipsis.clear);
     }
   },
 
