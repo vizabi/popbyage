@@ -279,7 +279,7 @@ const PopByAge = Component.extend("popbyage", {
         _this.model.time.step = _this.groupBy;
         _this.timeSteps = _this.model.time.getAllSteps();
         _this.model.ui.chart.lockNonSelected = 0;
-        _this.labels.html("");
+        _this.labels.text("");
       },
       "change:ui.chart.inpercent": function(evt) {
         if (!_this._readyOnce) return;
@@ -314,7 +314,7 @@ const PopByAge = Component.extend("popbyage", {
           _this._makeOutlines(_this.frameAxisX, _this.total);
         } else {
           _this.yearLocked.text("");
-          _this.lockedPaths.html("");
+          _this.lockedPaths.text("");
         }
       },
       "ready:marker": function(evt) {
@@ -342,10 +342,14 @@ const PopByAge = Component.extend("popbyage", {
 
   domReady() {
     this._super();
-    this.graphTemplate = d3.select(this.element)
-      .select(".vzb-bc-graph")
-      .html();
+    ////replace code below when IE11 support will be skipped
+    // this.graphTemplate = d3.select(this.element)
+    //   .select(".vzb-bc-graph")
+    //   .html();
+    this.graphTemplate = new XMLSerializer().serializeToString(d3.select(this.element).select(".vzb-bc-graph").node());
+    ////
   },
+
   // afterPreload: function() {
   //   var obj = {};
   //   obj["which"] = this.model.marker.axis_x.which;
@@ -531,11 +535,18 @@ const PopByAge = Component.extend("popbyage", {
   },
 
   _updateGraphs(data) {
+    const _this = this;
     const graph = this.element.selectAll(".vzb-bc-graph").data(data)
     graph.exit().remove();
-    graph.enter().append("g")
-      .attr("class", "vzb-bc-graph")
-      .html(this.graphTemplate);
+    ////replace code below when IE11 support will be skipped
+    //  graph.enter().append("g")
+    //   .attr("class", "vzb-bc-graph")
+    //   .html(this.graphTemplate);
+    graph.enter().append(function() {
+      return this.ownerDocument.importNode(
+        new DOMParser().parseFromString(_this.graphTemplate, 'application/xml').documentElement, true);
+    });
+    ////
 
     this.element.select(".vzb-bc-tooltip").raise();
     this.graph = this.element.selectAll(".vzb-bc-graph");
@@ -583,7 +594,7 @@ const PopByAge = Component.extend("popbyage", {
 
     this.model.marker.getFrame(this.model.time.parse("" + this.lock), (lockFrame, lockTime) => {
       if (!lockFrame) return;
-      _this.lockedPaths.html("");
+      _this.lockedPaths.text("");
       let total = {};
       if (this.ui.chart.inpercent) {
         if (this.smallMultiples) {
@@ -1315,10 +1326,17 @@ const PopByAge = Component.extend("popbyage", {
     const ageDim = _this.AGEDIM;
     const stackDim = _this.STACKDIM;
     const shiftedAgeDim = "s_age";
-
     const left = _this.sideKeys.indexOf(d[sideDim]) > 0;
-    const label = _this.labels.select(".vzb-bc-label-" + d[shiftedAgeDim]);// + "-" + _this._id);
-    label.selectAll(".vzb-bc-age")
+
+    let deltaX = 7;
+    if (!this.smallMultiples) {
+      const hoverBarEl = d3.select(d3.event.target);
+      deltaX += +hoverBarEl.attr("x");
+    }
+
+    const labelNode = _this.labels.select(".vzb-bc-label-" + d[shiftedAgeDim]).nodes()[d.i];// + "-" + _this._id);
+    const labelEl = d3.select(labelNode);
+    labelEl.selectAll(".vzb-bc-age")
       .text(textData => {
         //var total = _this.ui.chart.inpercent ? _this.totalValues[d[sideDim]] : 1;
         let text = _this.stackKeys.length > 1 ? _this.stackItems[d[stackDim]] : textData.text;
@@ -1326,15 +1344,17 @@ const PopByAge = Component.extend("popbyage", {
         const value = _this.xScale.invert(d["width_"]);
         return text + ": " + formatter(value);
       })
-      .attr("x", (left ? -1 : 1) * (_this.activeProfile.centerWidth * 0.5 + 7))
+      .attr("x", left ? -this.activeProfile.centerWidth - deltaX : deltaX)
       .attr("dx", 0)
       .classed("vzb-text-left", left);
-    const bbox = label.node().getBBox();
-    const transform = _this.element.node().getScreenCTM().inverse().multiply(label.nodes()[d.i].getScreenCTM());
+    labelEl.classed("vzb-prehovered", true);      
+    const bbox = labelNode.getBBox();
+    const transform = _this.element.node().getScreenCTM().inverse().multiply(labelNode.getScreenCTM());
     const overDrawLeft = Math.max(-bbox.x - transform.e, 0);
-    const overDrawRight = Math.min(_this.fullWidth - bbox.x - bbox.width - transform.e, 0);    
-    label.selectAll(".vzb-bc-age").attr("dx", overDrawLeft + overDrawRight);
-    label.classed("vzb-hovered", (_d, i) => i === d.i ? true : false);
+    const overDrawRight = Math.min(_this.fullWidth - bbox.x - bbox.width - transform.e, 0);
+    labelEl.selectAll(".vzb-bc-age").attr("dx", overDrawLeft + overDrawRight);
+    labelEl.classed("vzb-prehovered", false);
+    labelEl.classed("vzb-hovered", true);
   },
 
   getGraphWidth(width, marginBetween) {
@@ -1554,20 +1574,20 @@ const PopByAge = Component.extend("popbyage", {
     const titleSpace = (i) => (translateX[i] - this.activeProfile.titlesSpacing) < 0 ? _this.activeProfile.centerWidth * 0.5 : _this.activeProfile.titlesSpacing;
 
     this.title
-      .attr("x", (d, i) => this.twoSided ? translateX[i] - titleSpace(i) : 0)
+      .attr("x", (d, i) => this.twoSided ? translateX[i] - _this.activeProfile.centerWidth * 0.5 - titleSpace(i) : 0)
       .style("text-anchor", this.twoSided ? "end" : "")
       .attr("y", -margin.top * 0.275 - deltaMarginTop)
       .each(function(d, i) {
         _this.textEllipsis.wrap(this, _this.twoSided ? (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5 : _this.graphWidth[i] +  margin.between)
       });
     this.titleRight
-      .attr("x", (d, i) => translateX[i] + titleSpace(i))
+      .attr("x", (d, i) => translateX[i] - _this.activeProfile.centerWidth * 0.5 + titleSpace(i))
       .attr("y", -margin.top * 0.275 - deltaMarginTop)
       .each(function(d, i) {
         _this.textEllipsis.wrap(this, (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5)
       });
     this.titleCenter
-      .attr("x", (d, i) => this.twoSided ? translateX[i] : _this.graphWidth[i] * 0.5)
+      .attr("x", (d, i) => this.twoSided ? translateX[i] - _this.activeProfile.centerWidth * 0.5: _this.graphWidth[i] * 0.5)
       .style("text-anchor", "middle")
       .attr("y", (-margin.top - deltaMarginTop)* 0.035 )
       .each(function(d, i) {

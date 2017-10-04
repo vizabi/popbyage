@@ -53,6 +53,10 @@
       .vzb-bc-label {
         display: none;
         pointer-events: none;
+        &.vzb-prehovered {
+          display: block;
+          visibility: hidden;
+        }
         &.vzb-hovered {
           display: block;
         }
