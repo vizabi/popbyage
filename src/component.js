@@ -30,10 +30,10 @@ const PopByAge = Component.extend("popbyage", {
       type: "time"
     }, {
       name: "marker",
-      type: "model"
+      type: "marker"
     }, {
       name: "marker_allpossible",
-      type: "model"
+      type: "marker"
     }, {
       name: "entities",
       type: "entities"
