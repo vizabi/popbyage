@@ -1450,7 +1450,7 @@ const PopByAge = Component.extend("popbyage", {
     let _prevSum = 0;
     const graphWidthSum = this.graphWidth.map(width => {_prevSum = _sum; _sum += width; return _prevSum;});
     this.graph
-      .attr("transform", (d, i) => "translate(" + (margin.left + margin.between * i + graphWidthSum[i]) + "," + (margin.top - deltaMarginTop) + ")");
+      .attr("transform", (d, i) => "translate(" + Math.round(margin.left + margin.between * i + graphWidthSum[i]) + "," + (margin.top - deltaMarginTop) + ")");
 
     this.barsCrop
       .attr("width", (d, i) => this.graphWidth[i])
@@ -1532,9 +1532,13 @@ const PopByAge = Component.extend("popbyage", {
         .attr("transform", "translate(" + translateX[i] + "," + _this.height + ")")
         .call(_this.xAxis);
       const zeroTickEl = d3.select(this).selectAll(".tick text");
-      if (zeroTickEl.size() > 1) {
-        const zeroTickWidth = zeroTickEl.node().getBBox().width;
-        d3.select(zeroTickEl.node()).attr("dx", -(_this.activeProfile.centerWidth + zeroTickWidth) * (_this.twoSided ? 0.5 : 0.15));
+      const tickCount = zeroTickEl.size();
+      if (tickCount > 0) {
+        const zeroTickBBox = zeroTickEl.node().getBBox();
+        if (tickCount > 1) {
+          d3.select(zeroTickEl.node()).attr("dx", (_this.twoSided ? -_this.activeProfile.centerWidth * 0.5 : 0) - zeroTickBBox.width * 0.5 - zeroTickBBox.x);
+        }
+        zeroTickEl.classed("vzb-invisible", (_this.graphWidth[i] + margin.between) < zeroTickBBox.width);
       }
     });
 
