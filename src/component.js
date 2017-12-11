@@ -277,7 +277,7 @@ const PopByAge = Component.extend("popbyage", {
       "change:entities_age.grouping": function(evt) {
         _this.groupBy = +_this.model.entities_age.grouping || 1;
         _this.model.time.step = _this.groupBy;
-        _this.timeSteps = _this.model.time.getAllSteps();
+        _this.updateStartEnd(_this.model.time.value, _this.groupBy);
         _this.model.ui.chart.lockNonSelected = 0;
         _this.labels.text("");
       },
@@ -316,10 +316,6 @@ const PopByAge = Component.extend("popbyage", {
           _this.yearLocked.text("");
           _this.lockedPaths.text("");
         }
-      },
-      "ready:marker": function(evt) {
-        if (!_this._readyOnce) return;
-        _this.updateStartEnd(_this.model.time.value, _this.groupBy);
       }
     };
 
@@ -363,7 +359,7 @@ const PopByAge = Component.extend("popbyage", {
     const startYear = +timeModel.formatDate(timeModel.start);
     const offset = (+timeYear - startYear) % groupBy;
     if (offset !== timeModel.offset) {
-      timeModel.set("offset", offset, false, false);
+      timeModel.set("offset", offset);
       this.timeSteps = timeModel.getAllSteps();
       timeModel.set({
         startSelected: new Date(this.timeSteps[0]),
@@ -416,7 +412,7 @@ const PopByAge = Component.extend("popbyage", {
     this.nonSelectedOpacityZero = false;
 
     this.groupBy = +this.model.entities_age.grouping || 1;
-
+    
     this.on("resize", () => {
       _this._updateEntities();
       _this._redrawLocked();
@@ -425,19 +421,19 @@ const PopByAge = Component.extend("popbyage", {
     this._attributeUpdaters = {
       _newWidth(d, i) {
         //d["x_"] = 0;
-        let width;
+        let width;        
         if (_this.geoLess && _this.stackSkip && _this.sideSkip) {
-          width = (_this.frameAxisX[d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue];
+          width = _this.frameAxisX[`${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`];
         } else if (_this.geoLess && _this.stackSkip) {
-          width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? (_this.frameAxisX[d[_this.PREFIXEDSIDEDIM]][d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue] : 0;
+          width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[`${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`] : 0;
         } else if (_this.geoLess && _this.sideSkip) {
-          width = (_this.frameAxisX[d[_this.PREFIXEDSTACKDIM]][d[_this.AGEDIM] + _this.ageShift] || {})[_this.geoDomainDefaultValue];
+          width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`];
         } else if (_this.stackSkip) {
-          width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[d[_this.PREFIXEDSIDEDIM]][d[_this.AGEDIM] + _this.ageShift] : 0;
+          width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[`${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift}`] : 0;
         } else if (_this.sideSkip) {
-          width = _this.frameAxisX[d[_this.PREFIXEDSTACKDIM]][d[_this.AGEDIM] + _this.ageShift];
+          width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.AGEDIM] + _this.ageShift}`];
         } else {
-          width = _this.frameAxisX[d[_this.PREFIXEDSTACKDIM]][d[_this.PREFIXEDSIDEDIM]][d[_this.AGEDIM] + _this.ageShift];
+          width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift}`];
         }
         d["width_"] = width ? _this.xScale(width) : 0;
         if (_this.ui.chart.inpercent) {
@@ -464,7 +460,7 @@ const PopByAge = Component.extend("popbyage", {
    */
   ready() {
     //TODO: get component ready if some submodel doesn't ready ??????
-    if (!this.model.marker._ready) return;
+    //if (!this.model.marker._ready) return;
 
     const _this = this;
 
@@ -612,85 +608,91 @@ const PopByAge = Component.extend("popbyage", {
 
   interpolateDiagonal(pValues, nValues, fraction) {
     const _this = this;
-    const dataBetweenFrames = {};
-    let data;
-    let val1, val2, shiftedAge;
+    const data = {};
+    let val1, val2, shiftedAge, nKey, pKey;
     const groupBy = this.groupBy;
+    const geoDefault = this.geoDomainDefaultValue;
+
     if (this.geoLess && this.stackSkip && this.sideSkip) {
-      data = dataBetweenFrames;
       utils.forEach(_this.ageKeys, age => {
         shiftedAge = +age + groupBy;
-        val1 = pValues[age][_this.geoDomainDefaultValue];
-        val2 = (nValues[shiftedAge] || {})[_this.geoDomainDefaultValue] || 0;
-        data[shiftedAge] = {};
-        data[shiftedAge][_this.geoDomainDefaultValue] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        pKey = age + "," + geoDefault;
+        nKey = shiftedAge + "," + geoDefault;
+        val1 = pValues[pKey];
+        val2 = nValues[nKey] || 0;
+        data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
       });
-      data[0] = {};
-      data[0][_this.geoDomainDefaultValue] = nValues[0][_this.geoDomainDefaultValue] || 0;
+      nKey = 0 + "," + geoDefault;
+      data[nKey] = nValues[nKey] || 0;
     } else if (this.stackSkip && this.geoLess) {
       utils.forEach(_this.sideKeys, side => {
-        data = dataBetweenFrames[side] = {};
         utils.forEach(_this.ageKeys, age => {
           shiftedAge = +age + groupBy;
-          val1 = pValues[side][age][_this.geoDomainDefaultValue];
-          val2 = (nValues[side][shiftedAge] || {})[_this.geoDomainDefaultValue] || 0;
-          data[shiftedAge] = {};
-          data[shiftedAge][_this.geoDomainDefaultValue] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+          pKey = side + "," + age + "," + geoDefault;
+          nKey = side + "," + shiftedAge + "," + geoDefault;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
         });
-        data[0] = {};
-        data[0][_this.geoDomainDefaultValue] = nValues[side][0][_this.geoDomainDefaultValue] || 0;
+        nKey = side + "," + 0 + "," + geoDefault;
+        data[nKey] = nValues[nKey] || 0;
       });
     } else if (this.stackSkip) {
       utils.forEach(_this.sideKeys, side => {
-        data = dataBetweenFrames[side] = {};
         utils.forEach(_this.ageKeys, age => {
           shiftedAge = +age + groupBy;
-          val1 = pValues[side][age];
-          val2 = nValues[side][shiftedAge] || 0;
-          data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+          pKey = side + "," + age;
+          nKey = side + "," + shiftedAge;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
         });
-        data[0] = nValues[side][0] || 0;
+        nKey = side + "," + 0;
+        data[nKey] = nValues[nKey] || 0;
       });
     } else if (this.sideSkip && this.geoLess) {
       utils.forEach(_this.stackKeys, stack => {
-        data = dataBetweenFrames[stack] = {};
         utils.forEach(_this.ageKeys, age => {
           shiftedAge = +age + groupBy;
-          val1 = pValues[stack][age][_this.geoDomainDefaultValue];
-          val2 = (nValues[stack][shiftedAge] || {})[_this.geoDomainDefaultValue] || 0;
-          data[shiftedAge] = {};
-          data[shiftedAge][_this.geoDomainDefaultValue] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+          pKey = stack + "," + age + "," + geoDefault;
+          nKey = stack + "," + shiftedAge + "," + geoDefault;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
         });
-        data[0] = {};
-        data[0][_this.geoDomainDefaultValue] = nValues[stack][0][_this.geoDomainDefaultValue] || 0;
+        nKey = stack + "," + 0 + "," + geoDefault;
+        data[nKey] = nValues[nKey] || 0;
       });
     } else if (this.sideSkip) {
       utils.forEach(_this.stackKeys, stack => {
-        data = dataBetweenFrames[stack] = {};
         utils.forEach(_this.ageKeys, age => {
           shiftedAge = +age + groupBy;
-          val1 = pValues[stack][age];
-          val2 = nValues[stack][shiftedAge] || 0;
-          data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+          pKey = stack + "," + age;
+          nKey = stack + "," + shiftedAge;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
         });
-        data[0] = nValues[stack][0] || 0;
+        nKey = stack + "," + 0;
+        data[nKey] = nValues[nKey] || 0;
       });
     } else {
       utils.forEach(_this.stackKeys, stack => {
-        dataBetweenFrames[stack] = {};
         utils.forEach(_this.sideKeys, side => {
-          data = dataBetweenFrames[stack][side] = {};
           utils.forEach(_this.ageKeys, age => {
             shiftedAge = +age + groupBy;
-            val1 = pValues[stack][side][age];
-            val2 = nValues[stack][side][shiftedAge] || 0;
-            data[shiftedAge] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+            pKey = stack + "," + side + "," + age;
+            nKey = stack + "," + side + "," + shiftedAge;
+            val1 = pValues[pKey];
+            val2 = nValues[nKey] || 0;
+            data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
           });
-          data[0] = nValues[stack][side][0] || 0;
+          nKey = stack + "," + side + "," + 0;
+          data[nKey] = nValues[nKey] || 0;
         });
       });
     }
-    return dataBetweenFrames;
+    return data;
   },
 
   updateUIStrings() {
@@ -801,7 +803,7 @@ const PopByAge = Component.extend("popbyage", {
 
     this.cScale = this.model.marker.color.getScale();
 
-    this.markers = this.model.marker.getKeys(ageDim);
+    this.markers = this.model.marker.getKeys(ageDim).sort((a,b) => d3.ascending(+a[ageDim], +b[ageDim]));
   },
 
   _updateSideTitles() {
@@ -840,6 +842,7 @@ const PopByAge = Component.extend("popbyage", {
     const maxLimits = {};
     const geoLess = this.geoLess;
     const geoDefault = this.geoDomainDefaultValue;
+    let key;
     sideKeysNF.forEach(s => {
       maxLimits[s] = [];
       inpercentMaxLimits[s] = [];
@@ -853,8 +856,9 @@ const PopByAge = Component.extend("popbyage", {
         const sideMaxLimits = [];
         utils.forEach(_this.ageKeys, age => {
           let stackSum = 0;
-          if (frame[age]) {
-            stackSum += frame[age][geoDefault];
+          key = age + "," + geoDefault;
+          if (frame[key]) {
+            stackSum += frame[key];
             ageSum += stackSum;
           }
           sideMaxLimits.push(stackSum);
@@ -873,8 +877,9 @@ const PopByAge = Component.extend("popbyage", {
         utils.forEach(_this.ageKeys, age => {
           let stackSum = 0;
           utils.forEach(stackKeys, stack => {
-            if (frame[stack] && frame[stack][age]) {
-              stackSum += geoLess ? frame[stack][age][geoDefault] : frame[stack][age];
+            key = stack + "," + age;
+            if (frame[key]) {
+              stackSum += geoLess ? frame[key + "," + geoDefault] : frame[key];
               ageSum += stackSum;
             }
           });
@@ -894,8 +899,9 @@ const PopByAge = Component.extend("popbyage", {
           const sideMaxLimits = [];
           utils.forEach(_this.ageKeys, age => {
             let stackSum = 0;
-            if (frame[side] && frame[side][age]) {
-              stackSum += geoLess ? frame[side][age][geoDefault] : frame[side][age];
+            key = side + "," + age;
+            if (frame[key]) {
+              stackSum += geoLess ? frame[key + "," + geoDefault] : frame[key];
               ageSum += stackSum;
             }
             sideMaxLimits.push(stackSum);
@@ -916,8 +922,9 @@ const PopByAge = Component.extend("popbyage", {
           utils.forEach(_this.ageKeys, age => {
             let stackSum = 0;
             utils.forEach(stackKeys, stack => {
-              if (frame[stack][side] && frame[stack][side][age]) {
-                stackSum += geoLess ? frame[stack][side][age][geoDefault] : frame[stack][side][age];
+              key = stack + "," + side + "," + age;
+              if (frame[key]) {
+                stackSum += geoLess ? frame[key + "," + geoDefault] : frame[key];
                 ageSum += stackSum;
               }
             });
@@ -1248,7 +1255,7 @@ const PopByAge = Component.extend("popbyage", {
         const data = {};
         data.d = barsData.map(age => {
           const r = {};
-          const x = utils.getValueMD(age.side[i].stack[stackIndex[i]], frame, KEYS);
+          const x = frame[utils.getKey(age.side[i].stack[stackIndex[i]], KEYS)];
           r.x = x ? _this.xScale(x) : 0;
             if (_this.ui.chart.inpercent) {
               r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
