@@ -824,7 +824,7 @@ const PopByAge = Component.extend("popbyage", {
         d3.select(this).text(_this.stackItems[_this.stackKeys[i]]);
       });
     } else {
-      const title = this.stackKeys.length && this.stackItems[this.stackKeys[0]] ? this.stackItems[this.stackKeys[0]] : "";
+      const title = this.stackKeys.length && this.stackItems[this.stackKeys[0]] ? this.stackItems[this.stackKeys[0]] && !this.stackSkip : "";
       this.titleCenter.text(title).call(this.textEllipsis.clear);
     }
   },
@@ -840,8 +840,7 @@ const PopByAge = Component.extend("popbyage", {
     const totals = {};
     const inpercentMaxLimits = {};
     const maxLimits = {};
-    const geoLess = this.geoLess;
-    const geoDefault = this.geoDomainDefaultValue;
+    const geoDefault = this.geoLess ? "," + this.geoDomainDefaultValue : "";
     let key;
     sideKeysNF.forEach(s => {
       maxLimits[s] = [];
@@ -856,7 +855,7 @@ const PopByAge = Component.extend("popbyage", {
         const sideMaxLimits = [];
         utils.forEach(_this.ageKeys, age => {
           let stackSum = 0;
-          key = age + "," + geoDefault;
+          key = age + geoDefault;
           if (frame[key]) {
             stackSum += frame[key];
             ageSum += stackSum;
@@ -877,9 +876,9 @@ const PopByAge = Component.extend("popbyage", {
         utils.forEach(_this.ageKeys, age => {
           let stackSum = 0;
           utils.forEach(stackKeys, stack => {
-            key = stack + "," + age;
+            key = stack + "," + age + geoDefault;
             if (frame[key]) {
-              stackSum += geoLess ? frame[key + "," + geoDefault] : frame[key];
+              stackSum += frame[key];
               ageSum += stackSum;
             }
           });
@@ -899,9 +898,9 @@ const PopByAge = Component.extend("popbyage", {
           const sideMaxLimits = [];
           utils.forEach(_this.ageKeys, age => {
             let stackSum = 0;
-            key = side + "," + age;
+            key = side + "," + age + geoDefault;
             if (frame[key]) {
-              stackSum += geoLess ? frame[key + "," + geoDefault] : frame[key];
+              stackSum += frame[key];
               ageSum += stackSum;
             }
             sideMaxLimits.push(stackSum);
@@ -922,9 +921,9 @@ const PopByAge = Component.extend("popbyage", {
           utils.forEach(_this.ageKeys, age => {
             let stackSum = 0;
             utils.forEach(stackKeys, stack => {
-              key = stack + "," + side + "," + age;
+              key = stack + "," + side + "," + age + geoDefault;
               if (frame[key]) {
-                stackSum += geoLess ? frame[key + "," + geoDefault] : frame[key];
+                stackSum += frame[key];
                 ageSum += stackSum;
               }
             });
