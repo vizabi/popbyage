@@ -106,10 +106,6 @@
     }
     .vzb-bc-year {
       @extend %vzb-chart-axis-title;
-      @include rtl {
-        direction: rtl;
-        unicode-bidi: embed;
-      }
       fill: $vzb-color-grey;
       text-anchor: end;
       -webkit-touch-callout: none;

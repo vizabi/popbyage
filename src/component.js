@@ -699,9 +699,7 @@ const PopByAge = Component.extend("popbyage", {
     const _this = this;
     this.translator = this.model.locale.getTFunction();
 
-    const xTitle = this.xTitleEl.selectAll("text").data([0]);
-    xTitle.enter().append("text")
-      .text(_this.translator("popbyage/title"));
+    const xTitle = this.xTitleEl.select("text").text(_this.translator("popbyage/title"));
 
     const conceptPropsX = this.model.marker.axis_x.getConceptprops();
     utils.setIcon(this.xInfoEl, iconQuestion)
@@ -1606,7 +1604,7 @@ const PopByAge = Component.extend("popbyage", {
 
     this.xTitleEl
       .style("font-size", infoElHeight + "px")
-      .attr("transform", "translate(" + (isRTL ? margin.left + this.width : margin.left * 0.4) + "," + (margin.top * 0.35) + ")");
+      .attr("transform", "translate(" + (isRTL ? margin.left + this.width + margin.right * 0.6 : margin.left * 0.4) + "," + (margin.top * 0.35) + ")");
 
     if (this.xInfoEl.select("svg").node()) {
       const titleBBox = this.xTitleEl.node().getBBox();
@@ -1623,8 +1621,9 @@ const PopByAge = Component.extend("popbyage", {
 
     const yearLabelOptions = {
       topOffset: this.ui.presentation ? 25 : this.getLayoutProfile() === "small" ? 10 : 15,
+      leftOffset: this.getLayoutProfile() === "small" ? 5 : 10,
       rightOffset: this.getLayoutProfile() === "small" ? 5 : 10,
-      xAlign: "right",
+      xAlign: isRTL ? "left" : "right",
       yAlign: "top",
       heightRatio: this.ui.presentation ? 0.5 : 0.5,
       //widthRatio: this.getLayoutProfile() === "large" ? 3 / 8 : 5 / 10
@@ -1634,7 +1633,7 @@ const PopByAge = Component.extend("popbyage", {
     this.year
       .setConditions(yearLabelOptions)
       .resize(this.fullWidth, margin.top);
-    this.yearLocked.attr("x", isRTL? margin.left * 0.4 : this.width + margin.left + margin.right - 10).attr("y", (margin.top - deltaMarginTop) * (this.getLayoutProfile() === "large" ? 1.27 : 1.27));
+    this.yearLocked.attr("x", this.width + margin.left + margin.right - 10).attr("y", (margin.top - deltaMarginTop) * (this.getLayoutProfile() === "large" ? 1.27 : 1.27));
 
   },
 
