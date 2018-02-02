@@ -32,9 +32,6 @@ const PopByAge = Component.extend("popbyage", {
       name: "marker",
       type: "marker"
     }, {
-      name: "marker_allpossible",
-      type: "marker"
-    }, {
       name: "entities",
       type: "entities"
     }, {
@@ -42,9 +39,6 @@ const PopByAge = Component.extend("popbyage", {
       type: "entities"
     }, {
       name: "entities_age",
-      type: "entities"
-    }, {
-      name: "entities_allpossible",
       type: "entities"
     }, {
       name: "entities_geodomain",
@@ -184,8 +178,8 @@ const PopByAge = Component.extend("popbyage", {
         _this.model.entities.set(entitiesProps);
         _this.model.entities_geodomain.skipFilter = (stackDim === _this.geoDomainDimension || _this.SIDEDIM === _this.geoDomainDimension) &&
           (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
-        _this.model.entities_allpossible.set("dim", stackDim);
-        _this.model.marker_allpossible.color.set("which", _this.model.marker.color.which);
+        _this.model.entities.set("dim", stackDim);
+        _this.model.marker.color.set("which", _this.model.marker.color.which);
       },
       "change:marker.side.which": function(evt) {
         if (!_this._readyOnce) return;
@@ -519,7 +513,7 @@ const PopByAge = Component.extend("popbyage", {
       _this._getLimits();
 
       _this.resize();
-      _this.model.marker_allpossible.getFrame(_this.model.time.value, apFrame => {
+      _this.model.marker.getFrame(_this.model.time.value, apFrame => {
         _this.frameAllColor = apFrame.color || {};
         _this._updateEntities(true);
         _this.updateBarsOpacity();
