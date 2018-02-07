@@ -20,7 +20,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
     this.components = [{
       component,
       placeholder: ".vzb-tool-viz",
-      model: ["state.time", "state.marker", "state.marker_allpossible", "state.entities", "state.entities_side", "state.entities_age", "state.entities_allpossible", "state.entities_geodomain", "locale", "ui"] //pass models to component
+      model: ["state.time", "state.marker", "state.entities", "state.entities_side", "state.entities_age", "state.entities_geodomain", "locale", "ui"] //pass models to component
     }, {
       component: Vizabi.Component.get("timeslider"),
       placeholder: ".vzb-tool-timeslider",
@@ -58,22 +58,6 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
 
     //validate on first model set only
     if (!this.model) {
-      const entities = model.state.entities;
-      const dimAllPossible = model.state.entities_allpossible.dim;
-      if (Object.keys(entities.show).length > 0) {
-        const show = {};
-        if (entities.show[entities.dim] && entities.show[entities.dim]["$in"]) {
-          show[entities.dim] = {};
-          show[entities.dim]["$in"] = entities.show[entities.dim]["$in"];
-        }
-        if (entities.dim !== dimAllPossible) {
-          show["is--" + dimAllPossible] = true;
-        }
-        if (!entities.show[entities.dim] || !(Object.keys(entities.show).length == 1)) {
-          entities.show = show;
-        }
-      }
-
       const entities_geodomain = model.state.entities_geodomain;
       entities_geodomain.skipFilter = (model.state.entities.dim === entities_geodomain.dim || model.state.entities_side.dim === entities_geodomain.dim) && 
         (Boolean(model.state.entities.getFilteredEntities().length) || !model.state.entities_side.skipFilter);
@@ -93,11 +77,15 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
         lockActive: true,
         lockNonSelected: 0
       },
-      "buttons": ["colors", "show", "lock", "side", "inpercent", "moreoptions", "fullscreen"],
+      "buttons": ["colors", "find", "lock", "side", "inpercent", "moreoptions", "fullscreen"],
       "dialogs": {
-        "popup": ["timedisplay", "colors", "show", "side", "moreoptions"],
-        "sidebar": ["timedisplay", "colors", "grouping", "show"],
-        "moreoptions": ["opacity", "speed", "grouping", "colors", "side", "presentation", "about"]
+        "popup": ["timedisplay", "colors", "find", "side", "moreoptions"],
+        "sidebar": ["timedisplay", "colors", "find", "grouping"],
+        "moreoptions": ["opacity", "speed", "grouping", "colors", "side", "presentation", "about"],
+        "dialog": {"find": {
+          "panelMode": "show", 
+          enablePicker: false
+        } }
       },
       presentation: false
     },
