@@ -82,7 +82,10 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
         "popup": ["timedisplay", "colors", "find", "side", "moreoptions"],
         "sidebar": ["timedisplay", "colors", "find", "grouping"],
         "moreoptions": ["opacity", "speed", "grouping", "colors", "side", "presentation", "about"],
-        "dialog": {"find": {"panelMode": "show"} } 
+        "dialog": {"find": {
+          "panelMode": "show", 
+          enablePicker: false
+        } }
       },
       presentation: false
     },
