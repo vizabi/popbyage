@@ -493,6 +493,7 @@ const PopByAge = Component.extend("popbyage", {
     this.model.marker.getFrame(_this.model.time.value, (frame, time) => {
       _this.frame = frame;
       _this.frameAxisX = frame.axis_x;
+      _this.frameColor = frame.color;
 
       const frames = {};
       frames[time] = frame;
@@ -1137,7 +1138,7 @@ const PopByAge = Component.extend("popbyage", {
       .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
       .attr("y", 0)
       .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
-      .attr("fill", d => _this.cScale(_this.frame[d[prefixedStackDim]] || d[prefixedStackDim]))
+      .attr("fill", d => _this.cScale(_this.frameColor[d[prefixedStackDim]] || d[prefixedStackDim]))
       //.attr("width", _attributeUpdaters._newWidth)
       .attr("x", _attributeUpdaters._newX)
       .on("mouseover", _this.interaction.mouseover)
@@ -1149,7 +1150,7 @@ const PopByAge = Component.extend("popbyage", {
 
     if (reorder) stackBars
       .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
-      .attr("fill", d => _this.cScale(_this.frame[d[prefixedStackDim]] || d[prefixedStackDim]))
+      .attr("fill", d => _this.cScale(_this.frameColor[d[prefixedStackDim]] || d[prefixedStackDim]))
       .order();
 
     const stepShift = (ageData[0][shiftedAgeDim] - ageData[0][ageDim]) - this.shiftScale(time.value) * groupBy;
@@ -1256,7 +1257,7 @@ const PopByAge = Component.extend("popbyage", {
     const data = this.bars.selectAll(".vzb-bc-side-left").selectAll(".vzb-bc-stack-0").data();
     const color = _this.cScale(data[0][this.PREFIXEDSTACKDIM])
     const colorShade = this.model.marker.color.getColorShade({
-      colorID: _this.frame[data[0][this.PREFIXEDSTACKDIM]] || data[0][this.PREFIXEDSTACKDIM],
+      colorID: _this.frameColor[data[0][this.PREFIXEDSTACKDIM]] || data[0][this.PREFIXEDSTACKDIM],
       shadeID: "shade"
     }) || "#000";//d3.hsl(color).darker(2);
 
