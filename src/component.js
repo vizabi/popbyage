@@ -229,6 +229,7 @@ const PopByAge = Component.extend("popbyage", {
         }
         _this.model.entities_geodomain.skipFilter = (_this.SIDEDIM === _this.geoDomainDimension || _this.STACKDIM === _this.geoDomainDimension) &&
           (Boolean(_this.model.entities.getFilteredEntities().length) || !_this.model.entities_side.skipFilter);
+        _this.lockFrame = null;
       },
       "change:entities_side.show": function(evt) {
         if (!_this._readyOnce) return;
@@ -241,7 +242,7 @@ const PopByAge = Component.extend("popbyage", {
           }
         });
         if (_entitiesSameDimWithSide) {
-          _this.model.entities.getFilteredEntities();
+          //_this.model.entities.getFilteredEntities();
           const showEntities = _this.model.entities_side.getFilteredEntities().filter(s => !_entitiesSameDimWithSide.isShown(s));
           if (showEntities.length) {
             _entitiesSameDimWithSide.showEntity(showEntities);
@@ -274,6 +275,7 @@ const PopByAge = Component.extend("popbyage", {
         _this.updateStartEnd(_this.model.time.value, _this.groupBy);
         _this.model.ui.chart.lockNonSelected = 0;
         _this.labels.text("");
+        _this.model.entities_age.clearShow();
       },
       "change:ui.chart.inpercent": function(evt) {
         if (!_this._readyOnce) return;
@@ -305,6 +307,9 @@ const PopByAge = Component.extend("popbyage", {
             return;
           }
           _this.yearLocked.text(" " + _this.lock);//🔒
+          _this.lockFrame = {
+            axis_x: _this.frameAxisX
+          }
           _this._makeOutlines(_this.frameAxisX, _this.total);
         } else {
           _this.yearLocked.text("");
@@ -406,7 +411,7 @@ const PopByAge = Component.extend("popbyage", {
     this.nonSelectedOpacityZero = false;
 
     this.groupBy = +this.model.entities_age.grouping || 1;
-    
+
     this.on("resize", () => {
       _this._updateEntities();
       _this._redrawLocked();
@@ -462,6 +467,18 @@ const PopByAge = Component.extend("popbyage", {
 
     this.timeSteps = this.model.time.getAllSteps();
 
+    if (this.groupBy !== 1 && this.lock && !this.lockFrame && !this.model.time.splash ) {
+      const lockTime = this.model.time.parse("" + this.lock);
+      if (lockTime < this.timeSteps[0] || lockTime > this.timeSteps[this.timeSteps.length - 1]) {
+        this.timeSaved = this.model.time.value;
+        this.model.time.set({
+          startSelected: new Date(lockTime),
+          endSelected: new Date(lockTime)
+        }, false, false);
+        return;
+      }
+    }
+
     this.shiftScale = d3.scaleLinear()
       .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
       .range([0, this.timeSteps.length - 1]);
@@ -510,6 +527,22 @@ const PopByAge = Component.extend("popbyage", {
         _this._createLimits(frames);
         _this._updateLimits();
       }
+
+      if (_this.timeSaved) {
+        if (_this.timeSaved - _this.model.time.value !== 0) {
+          _this.lockFrame = {
+            axis_x: _this.frameAxisX
+          }
+          const timeSaved = _this.timeSaved;
+          _this.timeSaved = null;
+          _this.model.time.set({
+            startSelected: new Date(timeSaved),
+            endSelected: new Date(timeSaved)
+          }, false, false);
+        }
+        return;
+      }
+
       _this._getLimits();
 
       _this.resize();
@@ -558,13 +591,14 @@ const PopByAge = Component.extend("popbyage", {
       const groupBy = _this.groupBy;
       _this.model.marker.getFrame(null, frames => {
         if(!frames || groupBy !== _this.groupBy) return;
+        const fullFrames = _this.groupBy !== 1 && _this.lock && _this.lockFrame ? Object.assign({ [_this.model.time.parse("" + _this.lock)]: _this.lockFrame }, frames) : frames;
         if (_this.smallMultiples) {
           utils.forEach(_this.stackKeys, (stackKey, i) => {
-            _this._createLimits(frames, stackKey);
+            _this._createLimits(fullFrames, stackKey);
             _this._updateLimits(stackKey, i);            
           });
         } else {
-          _this._createLimits(frames);
+          _this._createLimits(fullFrames);
           _this._updateLimits();
         }
         _this.resize();
@@ -579,21 +613,32 @@ const PopByAge = Component.extend("popbyage", {
     const _this = this;
     if (!this.lock) return;
 
-    this.model.marker.getFrame(this.model.time.parse("" + this.lock), (lockFrame, lockTime) => {
+    const lockTime = this.model.time.parse("" + this.lock);
+
+    if (lockTime < this.timeSteps[0] || lockTime > this.timeSteps[this.timeSteps.length - 1]) {
+      if (this.lockFrame) {
+        let total;
+        if (this.ui.chart.inpercent) {
+          total = this._updateTotal(lockTime);
+          if (!total[0]) return;
+        }
+        this._makeOutlines(this.lockFrame.axis_x, total);
+      }
+      return;
+    }
+
+    this.model.marker.getFrame(lockTime, lockFrame => {
       if (!lockFrame) return;
       _this.lockedPaths.text("");
-      let total = {};
-      if (this.ui.chart.inpercent) {
-        if (this.smallMultiples) {
-          utils.forEach(this.stackKeys, (stackKey, i) => {
-            total[i] = this.totals[stackKey][lockTime] ? this.totals[stackKey][lockTime] : this._interpolateBetweenTotals(this.timeSteps, this.totals[stackKey], lockTime);
-          });
-        } else {
-          total[0] = this.totals[lockTime] ? this.totals[lockTime] : this._interpolateBetweenTotals(this.timeSteps, this.totals, lockTime);
-        }
+      let total;
+      if (_this.ui.chart.inpercent) {
+        total = this._updateTotal(lockTime);
         if (!total[0]) return;
       }
-      _this._makeOutlines(lockFrame.axis_x, total);
+      this.lockFrame = {
+        axis_x: lockFrame.axis_x
+      };
+      this._makeOutlines(lockFrame.axis_x, total);
     });
   },
 
@@ -982,6 +1027,18 @@ const PopByAge = Component.extend("popbyage", {
     return total;
   },
 
+  _updateTotal(time) {
+    const total = {};
+    if (this.smallMultiples) {
+      utils.forEach(this.stackKeys, (stackKey, i) => {
+        total[i] = this.totals[stackKey][time] ? this.totals[stackKey][time] : this._interpolateBetweenTotals(this.timeSteps, this.totals[stackKey], time);
+      });
+    } else {
+      total[0] = this.totals[time] ? this.totals[time] : this._interpolateBetweenTotals(this.timeSteps, this.totals, time);
+    }
+    return total;
+  },
+
   /**
    * Updates entities
    */
@@ -996,20 +1053,11 @@ const PopByAge = Component.extend("popbyage", {
     const prefixedStackDim = this.PREFIXEDSTACKDIM;
     const timeDim = this.TIMEDIM;
     const duration = (time.playing) ? time.delayAnimations : 0;
-    let total;
-
     const groupBy = this.groupBy;
     //var group_offset = this.model.marker.group_offset ? Math.abs(this.model.marker.group_offset % groupBy) : 0;
 
     if (this.ui.chart.inpercent) {
-      this.total = {};
-      if (this.smallMultiples) {
-        utils.forEach(this.stackKeys, (stackKey, i) => {
-          this.total[i] = this.totals[stackKey][time.value] ? this.totals[stackKey][time.value] : this._interpolateBetweenTotals(this.timeSteps, this.totals[stackKey], time.value);
-        });
-      } else {
-        this.total[0] = this.totals[time.value] ? this.totals[time.value] : this._interpolateBetweenTotals(this.timeSteps, this.totals, time.value);
-      }
+      this.total = this._updateTotal(time.value);
     }
 
     const domain = this.yScale.domain();
