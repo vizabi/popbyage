@@ -53,8 +53,17 @@ const PopByAge = Component.extend("popbyage", {
 
     const _this = this;
     this.model_binds = {
+      "change:time.start": function(evt) {
+        if (!_this._readyOnce) return;
+        _this.updateStartEnd(_this.model.time.value, _this.groupBy);
+      },
+      "change:time.end": function(evt) {
+        if (!_this._readyOnce) return;
+        _this.timeSteps = _this.model.time.getAllSteps();
+      },
       "change:time.startSelected": function(evt) {
         if (!_this._readyOnce) return;
+        _this.timeSteps = _this.model.time.getAllSteps();
         _this.model.time.set({
           startSelected: new Date(_this.timeSteps[0])
         }, false, false);
@@ -62,6 +71,7 @@ const PopByAge = Component.extend("popbyage", {
       },
       "change:time.endSelected": function(evt) {
         if (!_this._readyOnce) return;
+        _this.timeSteps = _this.model.time.getAllSteps();
         _this.model.time.set({
           endSelected: new Date(_this.timeSteps[_this.timeSteps.length - 1])
         }, false, false);
@@ -270,6 +280,7 @@ const PopByAge = Component.extend("popbyage", {
         _this._redrawLocked();
       },
       "change:entities_age.grouping": function(evt) {
+        _this.model.marker.clearSelected();
         _this.groupBy = +_this.model.entities_age.grouping || 1;
         _this.model.time.step = _this.groupBy;
         _this.updateStartEnd(_this.model.time.value, _this.groupBy);
