@@ -36,7 +36,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
     }, {
       component: Vizabi.Component.get("treemenu"),
       placeholder: ".vzb-tool-treemenu",
-      model: ["state.marker", "state.marker_tags", "state.time", "locale"]
+      model: ["state.marker", "state.time", "locale"]
     }, {
       component: Vizabi.Component.get("datanotes"),
       placeholder: ".vzb-tool-datanotes",
@@ -66,7 +66,6 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
 
   default_model: {
     state: {
-      marker_tags: {}
     },
     ui: {
       chart: {
