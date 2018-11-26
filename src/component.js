@@ -320,7 +320,8 @@ const PopByAge = Component.extend("popbyage", {
           _this.yearLocked.text(" " + _this.lock);//🔒
           _this.lockFrame = {
             axis_x: _this.frameAxisX
-          }
+          };
+          _this.lockTotal = _this.total;
           _this._makeOutlines(_this.frameAxisX, _this.total);
         } else {
           _this.yearLocked.text("");
@@ -470,8 +471,8 @@ const PopByAge = Component.extend("popbyage", {
    */
   ready() {
     //TODO: get component ready if some submodel doesn't ready ??????
-    //if (!this.model.marker._ready) return;
-
+    if (!this.model.marker._ready) return;
+    
     const _this = this;
 
     this.lock = _this.model.ui.chart.lockNonSelected;
@@ -480,7 +481,7 @@ const PopByAge = Component.extend("popbyage", {
 
     if (this.groupBy !== 1 && this.lock && !this.lockFrame && !this.model.time.splash ) {
       const lockTime = this.model.time.parse("" + this.lock);
-      if (lockTime < this.timeSteps[0] || lockTime > this.timeSteps[this.timeSteps.length - 1]) {
+      if (!this.timeSteps.some(time => !(lockTime - time))) {
         this.timeSaved = this.model.time.value;
         this.model.time.set({
           startSelected: new Date(lockTime),
@@ -543,7 +544,8 @@ const PopByAge = Component.extend("popbyage", {
         if (_this.timeSaved - _this.model.time.value !== 0) {
           _this.lockFrame = {
             axis_x: _this.frameAxisX
-          }
+          };
+          _this.lockTotal = _this._updateTotal(_this.model.time.value);
           const timeSaved = _this.timeSaved;
           _this.timeSaved = null;
           _this.model.time.set({
@@ -623,34 +625,21 @@ const PopByAge = Component.extend("popbyage", {
   _redrawLocked() {
     const _this = this;
     if (!this.lock) return;
+    if (this.lockFrame) {
+      this._makeOutlines(this.lockFrame.axis_x, this.lockTotal);
+    } else {
+      const lockTime = this.model.time.parse("" + this.lock);
 
-    const lockTime = this.model.time.parse("" + this.lock);
-
-    if (lockTime < this.timeSteps[0] || lockTime > this.timeSteps[this.timeSteps.length - 1]) {
-      if (this.lockFrame) {
-        let total;
-        if (this.ui.chart.inpercent) {
-          total = this._updateTotal(lockTime);
-          if (!total[0]) return;
-        }
-        this._makeOutlines(this.lockFrame.axis_x, total);
-      }
-      return;
+      this.model.marker.getFrame(lockTime, lockFrame => {
+        if (!lockFrame) return;
+        _this.lockedPaths.text("");
+        this.lockFrame = {
+          axis_x: lockFrame.axis_x
+        };
+        this.lockTotal = this._updateTotal(lockTime);
+        this._makeOutlines(lockFrame.axis_x, this.lockTotal);
+      });
     }
-
-    this.model.marker.getFrame(lockTime, lockFrame => {
-      if (!lockFrame) return;
-      _this.lockedPaths.text("");
-      let total;
-      if (_this.ui.chart.inpercent) {
-        total = this._updateTotal(lockTime);
-        if (!total[0]) return;
-      }
-      this.lockFrame = {
-        axis_x: lockFrame.axis_x
-      };
-      this._makeOutlines(lockFrame.axis_x, total);
-    });
   },
 
   interpolateDiagonal(pValues, nValues, fraction) {
