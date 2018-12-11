@@ -76,7 +76,7 @@ const PopByAge = Vizabi.Tool.extend("PopByAge", {
         lockActive: true,
         lockNonSelected: 0
       },
-      "buttons": ["colors", "find", "lock", /*"side",*/ "inpercent", "moreoptions", "fullscreen"],
+      "buttons": ["colors", "find", "lock", /*"side",*/ "inpercent", "moreoptions", "sidebarcollapse", "fullscreen"],
       "dialogs": {
         "popup": ["timedisplay", "colors", "find", /*"side",*/ "moreoptions"],
         "sidebar": ["timedisplay", "colors", "find", "grouping"],
