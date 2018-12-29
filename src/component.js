@@ -128,6 +128,7 @@ const PopByAge = Component.extend("popbyage", {
             });
           }
         }
+        _this._updateForecastOverlay();
         _this.snapped = false;
       },
       "change:marker.select": function(evt) {
@@ -327,6 +328,10 @@ const PopByAge = Component.extend("popbyage", {
           _this.yearLocked.text("");
           _this.lockedPaths.text("");
         }
+      },
+      "change:ui.chart.showForecastOverlay": function() {
+        if (!_this._readyOnce) return;
+        _this._updateForecastOverlay();
       }
     };
 
@@ -419,6 +424,8 @@ const PopByAge = Component.extend("popbyage", {
     this.year.setText(this.model.time.formatDate(this.model.time.value));
     this.yearLocked = this.element.select(".vzb-bc-year-locked");
 
+    this.forecastOverlay = this.element.select(".vzb-bc-forecastoverlay");
+
     this.someSelected = (this.model.marker.select.length > 0);
     this.nonSelectedOpacityZero = false;
 
@@ -509,6 +516,7 @@ const PopByAge = Component.extend("popbyage", {
     this.smallMultiples = (this.model.ui.chart || {}).mode === "smallMultiples" && !this.stackSkip && this.stackKeys.length > 1 ? true : false;
     this._updateGraphs(this.smallMultiples ? this.stackKeys : ["undefined"]);
     this._updateSideTitles();
+    this._updateForecastOverlay();
 
     if (this.lock && (this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples)) {
       this.yearLocked.text("" + this.lock);
@@ -838,6 +846,10 @@ const PopByAge = Component.extend("popbyage", {
     this.cScale = this.model.marker.color.getScale();
 
     this.markers = this.model.marker.getKeys(ageDim).sort((a,b) => d3.ascending(+a[ageDim], +b[ageDim]));
+  },
+
+  _updateForecastOverlay() {
+    this.forecastOverlay.classed("vzb-hidden", (this.model.time.value <= this.model.time.endBeforeForecast) || !this.model.time.endBeforeForecast || !this.model.ui.chart.showForecastOverlay);
   },
 
   _updateSideTitles() {
