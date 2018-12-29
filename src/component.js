@@ -319,14 +319,11 @@ const PopByAge = Component.extend("popbyage", {
             return;
           }
           _this.yearLocked.text(" " + _this.lock);//🔒
-          _this.lockFrame = {
-            axis_x: _this.frameAxisX
-          };
-          _this.lockTotal = _this.total;
-          _this._makeOutlines(_this.frameAxisX, _this.total);
+          _this._redrawLocked();
         } else {
           _this.yearLocked.text("");
           _this.lockedPaths.text("");
+          _this.lockFrame = null;
         }
       },
       "change:ui.chart.showForecastOverlay": function() {
