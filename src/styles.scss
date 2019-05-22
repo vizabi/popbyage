@@ -222,6 +222,12 @@
       .vzb-bc-labels {
         font-size: $vzb-font-size-largest;
       }
+
+      .vzb-bc-locked-crop {
+        .vzb-bc-paths {
+          stroke-width: 2px; 
+        }
+      }
     }
   }
 

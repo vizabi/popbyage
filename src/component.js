@@ -1509,7 +1509,7 @@ const PopByAge = Component.extend("popbyage", {
       .attr("height", Math.max(0, this.height));
 
     this.lockedCrop
-      .attr("width", (d, i) => this.graphWidth[i])
+      //.attr("width", (d, i) => this.graphWidth[i])
       .attr("height", Math.max(0, this.height));
 
     this.labelsCrop
@@ -1573,7 +1573,7 @@ const PopByAge = Component.extend("popbyage", {
         .tickSizeInner(-_this.height)
         .tickSizeOuter(0)
         .tickPadding(6)
-        .tickSizeMinor(-_this.height, 0)
+        .tickSizeMinor(0, 0)
         .labelerOptions({
           scaleType: _this.model.marker.axis_x.scaleType,
           toolMargin: margin,
@@ -1606,7 +1606,7 @@ const PopByAge = Component.extend("popbyage", {
           .tickSizeInner(-_this.height)
           .tickSizeOuter(0)
           .tickPadding(6)
-          .tickSizeMinor(-_this.height, 0)
+          .tickSizeMinor(0, 0)
           .labelerOptions({
             scaleType: _this.model.marker.axis_x.scaleType,
             toolMargin: margin,
