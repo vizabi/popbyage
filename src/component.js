@@ -1,18 +1,1486 @@
-const {
-  utils,
-  Component,
-  helpers: {
-    "d3.axisWithLabelPicker": axisSmart,
-    "d3.dynamicBackground": DynamicBackground,
-    "textEllipsis": TextEllipsis
+import {
+  BaseComponent,
+  Icons,
+  Utils,
+  LegacyUtils as utils,
+  axisSmart,
+  DynamicBackground,
+  TextEllipsis
+} from "VizabiSharedComponents";
+
+import {
+  runInAction
+} from "mobx";
+import { parseMarkerKey } from "../../../../../../../../home/test/projects/vizabi/vizabi-reactive/src/dataframe/utils";
+
+const {ICON_QUESTION} = Icons;
+
+const PROFILE_CONSTANTS = {
+  SMALL: {
+    margin: {
+      top: 50,
+      right: 20,
+      left: 40,
+      bottom: 20,
+      between: 10
+    },
+    infoElHeight: 16,
+    centerWidth: 2,
+    titlesSpacing: 5
   },
-  iconset: {
-    question: iconQuestion
+  MEDIUM: {
+    margin: {
+      top: 70,
+      right: 40,
+      left: 60,
+      bottom: 20,
+      between: 20
+    },
+    infoElHeight: 20,
+    centerWidth: 2,
+    titlesSpacing: 10
   },
-} = Vizabi;
+  LARGE: {
+    margin: {
+      top: 80,
+      right: 60,
+      left: 60,
+      bottom: 30,
+      between: 20
+    },
+    infoElHeight: 22,
+    centerWidth: 2,
+    titlesSpacing: 20
+  }
+}
+
+const PROFILE_CONSTANTS_FOR_PROJECTOR = {
+  MEDIUM: {
+    margin: { top: 120, right: 50, left:80, bottom: 60, between: 30 },
+    infoElHeight: 32
+  },
+  LARGE: {
+    margin: { top: 120, right: 70, left: 100, bottom: 70, between: 30 },
+    infoElHeight: 32
+  }
+}
+
+const SYMBOL_KEY = Symbol.for("key");
+
+//
+// POPBYAGE CHART COMPONENT
+export default class VizabiPopByAge extends BaseComponent {
+
+  constructor(config) {
+    config.subcomponents = [{
+      type: DynamicBackground,
+      placeholder: ".vzb-bc-year-now"
+    }];
+
+    config.template = `
+      <svg class="vzb-popbyage-svg">
+        <g class="vzb-bc-header">
+            <g class="vzb-bc-axis-x-title"></g>
+            <g class="vzb-bc-axis-x-info vzb-noexport"></g>
+            <g class="vzb-bc-year-now"></g>
+            <text class="vzb-bc-year vzb-bc-year-locked"></text>
+        </g>
+        <g class="vzb-bc-graph">
+            <text class="vzb-bc-title"></text>
+            <text class="vzb-bc-title vzb-bc-title-right"></text>
+            <text class="vzb-bc-title vzb-bc-title-center"></text>
+
+            <g class="vzb-bc-axis-y-title"></g>
+
+            <g class="vzb-bc-axis-y"></g>
+
+            <svg class="vzb-bc-bars-crop">
+                <g class="vzb-bc-bars"></g>
+            </svg>
+            
+            <svg class="vzb-bc-locked-crop">
+                <g class="vzb-bc-paths"></g>
+            </svg>
+
+            <g class="vzb-bc-axis-x"></g>
+            <g class="vzb-bc-axis-x vzb-bc-axis-x-left"></g>
+
+            <svg class="vzb-bc-labels-crop">
+                <g class="vzb-bc-labels"></g>
+            </svg>
+
+            <g class="vzb-bc-axis-labels">
+                <!-- <text class="vzb-x_label">Lifespan</text>
+                      <text class="vzb-y_label">Lifespan</text> -->
+            </g>
+        </g>
+        <g class="vzb-bc-tooltip vzb-hidden">
+            <rect class="vzb-tooltip-border"></rect>
+            <text class="vzb-tooltip-text"></text>
+        </g>
+      </svg>
+    `;
+    super(config);
+  }
+
+  setup() {
+    this.state = {};
+
+    this.DOM = {
+      graph: this.element.selectAll(".vzb-bc-graph"),
+      xTitleEl: this.element.select(".vzb-bc-axis-x-title"),
+      xInfoEl: this.element.select(".vzb-bc-axis-x-info"),
+      yearLocked: this.element.select(".vzb-bc-year-locked"),
+      forecastOverlay: this.element.select(".vzb-bc-forecastoverlay")
+
+    };
+
+    this.element.select(".vzb-bc-graph").call(graph =>
+      Object.assign(this.DOM, {
+        graph,
+        yAxisEl: graph.select(".vzb-bc-axis-y"),
+        xAxisEl: graph.select(".vzb-bc-axis-x"),
+        xAxisLeftEl: graph.select(".vzb-bc-axis-x-left"),
+        yTitleEl: graph.select(".vzb-bc-axis-y-title"),
+        title: graph.select(".vzb-bc-title"),
+        titleRight: graph.select(".vzb-bc-title-right"),
+        titleCenter: graph.select(".vzb-bc-title-center"),
+        barsCrop: graph.select(".vzb-bc-bars-crop"),
+        lockedCrop: graph.select(".vzb-bc-locked-crop"),
+        labelsCrop: graph.select(".vzb-bc-labels-crop") 
+      })
+    );
+    
+    this.DOM.bars = this.DOM.barsCrop.select(".vzb-bc-bars");
+    this.DOM.lockedPaths = this.DOM.lockedCrop.select(".vzb-bc-paths");
+    this.DOM.labels = this.DOM.labelsCrop.select(".vzb-bc-labels");  
+
+    this._year = this.findChild({type: "DynamicBackground"});
+
+    this._textEllipsis = new TextEllipsis(this);
+    this._textEllipsis.setTooltip(this.element.select(".vzb-bc-tooltip"));
+
+    this.interaction = this._interaction();
+
+    // // this.someSelected = (this.model.marker.select.length > 0);
+    // // this.nonSelectedOpacityZero = false;
+
+    this.groupBy = 1;//+this.model.entities_age.grouping || 1;
+
+    // this.on("resize", () => {
+    //   _this._updateEntities();
+    //   _this._redrawLocked();
+    // });
+
+    const _this = this;
+
+    this._attributeUpdaters = {
+      _newWidth(d, i) {
+        //d["x_"] = 0;
+        let width;        
+        // if (_this.geoLess && _this.stackSkip && _this.sideSkip) {
+        //   width = _this.frameAxisX[`${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`];
+        // } else if (_this.geoLess && _this.stackSkip) {
+        //   width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[`${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`] : 0;
+        // } else if (_this.geoLess && _this.sideSkip) {
+        //   width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`];
+        // } else if (_this.stackSkip) {
+        //   width = _this.colorUseConstant || d[_this.PREFIXEDSIDEDIM] == d[_this.PREFIXEDSTACKDIM] ? _this.frameAxisX[`${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift}`] : 0;
+        // } else if (_this.sideSkip) {
+        //   width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.AGEDIM] + _this.ageShift}`];
+        // } else {
+        //   width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift}`];
+        // }
+        width = _this.frame[d[SYMBOL_KEY]] && _this.frame[d[SYMBOL_KEY]].x;
+        d["width_"] = width ? _this.xScale(width) : 0;
+        if (_this.ui.inpercent) {
+          d["width_"] /= _this.total[d.i][d[_this.PREFIXEDSIDEDIM]];
+        }
+        return d.width_;
+      },
+      _newX(d, i) {
+        const prevSbl = this.previousSibling;
+        if (prevSbl) {
+          const prevSblDatum = d3.select(prevSbl).datum();
+          d["x_"] = prevSblDatum.x_ + prevSblDatum.width_;
+        }
+        // else {
+        //   d["x_"] = 0;
+        // }
+        return d.x_;
+      }
+    };
+
+
+    this.xScale = null;
+    this.yScale = null;
+    this.cScale = null;
+
+    this.xAxis = axisSmart("bottom");
+    this.xAxisLeft = axisSmart("bottom");
+    this.yAxis = axisSmart("left");
+    this.xScales = [];
+    this.SHIFTEDAGEDIM = "s_age";
+  }
+
+  draw() {
+    this.MDL = {
+      frame: this.model.encoding.get("frame"),
+      selected: this.model.encoding.get("selected"),
+      highlighted: this.model.encoding.get("highlighted"),
+      y: this.model.encoding.get("y"),
+      x: this.model.encoding.get("x"),
+      // y: this.model.encoding.get(this.state.alias.y || "y"),
+      // x: this.model.encoding.get(this.state.alias.x || "x"),
+      side: this.model.encoding.get("side"),
+      color: this.model.encoding.get("color"),
+      label: this.model.encoding.get("label"),
+      facet: this.model.encoding.get("facet")
+    };
+    this.localise = this.services.locale.auto();
+  
+    this.geoDomainDimension = this.MDL.facet.data.concept;
+    this.geoDomainDefaultValue = "world";//this.model.entities_geodomain.show[this.geoDomainDimension]["$in"][0];
+
+    this.timeSteps = this.MDL.frame.stepScale.range();
+
+    if (this._updateLayoutProfile()) return; //return if exists with error
+    this.addReaction(this.checkDimensions);
+    this.addReaction(this.updateUIStrings);
+    this.addReaction(this._updateIndicators);
+    this.addReaction(this._setupLimits);
+    this.addReaction(this.updateSize);
+    this.addReaction(this._updateSideTitles);
+    this.addReaction(this._updateForecastOverlay);
+    this.addReaction(this.drawData);
+
+
+  }
+
+  _updateLayoutProfile() {
+    this.services.layout.size;
+
+    this.profileConstants = this.services.layout.getProfileConstants(PROFILE_CONSTANTS, PROFILE_CONSTANTS_FOR_PROJECTOR);
+    this.height = this.element.node().clientHeight || 0;
+    this.width = this.element.node().clientWidth || 0;
+    if (!this.height || !this.width) return utils.warn("Chart _updateProfile() abort: container is too little or has display:none");
+  }
+
+  drawData() {
+    //TODO: get component ready if some submodel doesn't ready ??????    
+    const _this = this;
+
+    const {
+      frame,
+      x,
+      y,
+      side,
+      facet
+    } = this.MDL;
+
+
+    this.lock = this.ui.lockNonSelected;
+
+    if (this.groupBy !== 1 && this.lock && !this.lockFrame) {
+      const lockTime = this.localise("" + this.lock);
+      if (!this.timeSteps.some(time => !(lockTime - time))) {
+        this.timeSaved = this.model.time.value;
+        this.model.time.set({
+          startSelected: new Date(lockTime),
+          endSelected: new Date(lockTime)
+        }, false, false);
+        return;
+      }
+    }
+
+    this.shiftScale = d3.scaleLinear()
+      .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
+      .range([0, this.timeSteps.length - 1]);
+
+    // this.SIDEDIM = side.data.isConstant() ? "undefined" : side.data.concept;
+    // this.PREFIXEDSIDEDIM = "side_" + this.SIDEDIM;
+    // this.STACKDIM = facet.data.concept;
+    // this.PREFIXEDSTACKDIM = "stack_" + this.STACKDIM;
+    // this.AGEDIM = y.data.concept;
+    // this.TIMEDIM = frame.data.concept;
+    // this.checkDimensions();
+    // this.updateUIStrings();
+    //this._updateIndicators();
+    this.smallMultiples = (this.root.ui.chart || {}).mode === "smallMultiples" && !this.stackSkip && this.stackKeys.length > 1 ? true : false;
+    // //this._updateGraphs(this.smallMultiples ? this.stackKeys : ["undefined"]);
+
+    // // // if (this.lock && (this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples)) {
+    // // //   this.yearLocked.text("" + this.lock);
+    // // // } else {
+    // // //   _this.ui.lockNonSelected = 0;
+    // // // }
+    //todo
+    //this.model.ui.chart.set("lockUnavailable", !(this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples), false, false);
+
+//    this.model.marker.getFrame(_this.model.time.value, (frame, time) => {
+    
+    const time = frame.value;
+
+    this.frame = this._processData(this.model.dataArray);
+
+      const frames = {};
+      frames[time] = this.frame;
+      _this.maxLimits = {};
+      _this.inpercentMaxLimits = {};
+      _this.totals = {};
+
+      // if (_this.smallMultiples) {
+      //   utils.forEach(_this.stackKeys, (stackKey, i) => {
+      //     _this._createLimits(frames, stackKey);
+      //     _this._updateLimits(stackKey, i);
+      //   });
+      // } else {
+      //   _this._createLimits2(this.model.dataMapCache);
+      //   _this._updateLimits2(limitsDf);
+      // }
+
+      if (_this.timeSaved) {
+        if (_this.timeSaved - _this.model.time.value !== 0) {
+          _this.lockFrame = {
+            axis_x: _this.frameAxisX
+          };
+          _this.lockTotal = _this._updateTotal(_this.model.time.value);
+          const timeSaved = _this.timeSaved;
+          _this.timeSaved = null;
+          _this.model.time.set({
+            startSelected: new Date(timeSaved),
+            endSelected: new Date(timeSaved)
+          }, false, false);
+        }
+        return;
+      }
+
+      //_this._getLimits();
+
+      //_this.resize();
+      _this._updateEntities(true);
+      _this.updateBarsOpacity();
+        //_this._redrawLocked();
+        //_this.model.time.set('value', _this.model.time.value, true, true);
+//    });
+
+  }
+
+  getGraphWidth(width, marginBetween) {
+    let _width = width || this.width;
+    if (this.smallMultiples) {
+      const length = this.graph.data().length;
+      _width -= marginBetween * (length - 1);
+      return this.domainScalers.map(scaler => _width * scaler);
+    } else {
+      return [_width];
+    }
+  }
+
+  _processData(dataArray) {
+    const data = {};
+    for (let index = 0; index < dataArray.length; index++) {
+      const element = dataArray[index];
+      data[element[SYMBOL_KEY]] = element;
+    }
+    return data;
+  }
+
+
+  _getData(name) {
+    return this.state.facet ? this.MDL.facet[name][this.state.facet.index] : this.model[name];
+  } 
+
+  checkDimensions() {
+    const {
+      frame,
+      facet,
+      y,
+      color,
+      side
+    } = this.MDL;
+
+    const sideDim = this.SIDEDIM = side.data.isConstant() ? "undefined" : side.data.concept;
+    this.PREFIXEDSIDEDIM = "side_" + this.SIDEDIM;
+    const stackDim = this.STACKDIM = facet.data.concept;
+    this.PREFIXEDSTACKDIM = "stack_" + this.STACKDIM;
+    this.AGEDIM = y.data.concept;
+    this.TIMEDIM = frame.data.concept;
+
+    this.colorUseConstant = color.data.isConstant();
+    this.stackSkip = this.colorUseConstant || stackDim == sideDim;
+    this.geoLess = stackDim !== this.geoDomainDimension && sideDim !== this.geoDomainDimension;
+    this.sideSkip = side.data.isConstant();
+  }
+
+  updateUIStrings() {
+    const _this = this;
+
+    const xTitle = this.DOM.xTitleEl.select("text").text(_this.localise("popbyage/title"));
+
+    const conceptPropsX = this.MDL.x.data.conceptProps;
+    
+    const dataNotes = this.root.findChild({type: "DataNotes"});
+    
+    utils.setIcon(this.DOM.xInfoEl, ICON_QUESTION)
+      .select("svg").attr("width", "0px").attr("height", "0px")
+      .style('opacity', Number(Boolean(conceptPropsX.description || conceptPropsX.sourceLink)));
+
+    this.DOM.xInfoEl.on("click", () => {
+      dataNotes.pin();
+    });
+    this.DOM.xInfoEl.on("mouseover", function() {
+      if (_this.model.time.dragging) return;
+      const rect = this.getBBox();
+      const coord = utils.makeAbsoluteContext(this, this.farthestViewportElement)(rect.x - 10, rect.y + rect.height + 10);
+      const toolRect = _this.root.element.getBoundingClientRect();
+      const chartRect = _this.element.node().getBoundingClientRect();
+      dataNotes
+        .setEncoding(_this.MDL.x)
+        .show()
+        .setPos(coord.x + chartRect.left - toolRect.left, coord.y);
+    });
+    this.DOM.xInfoEl.on("mouseout", () => {
+      if (_this.model.time.dragging) return;
+      dataNotes.hide();
+    });
+
+    // var titleStringY = this.model.marker.axis_y.getConceptprops().name;
+
+    // var yTitle = this.yTitleEl.selectAll("text").data([0]);
+    // yTitle.enter().append("text");
+    // yTitle
+    //   .attr("y", "-6px")
+    //   .attr("x", "-9px")
+    //   .attr("dx", "-0.72em")
+    //   .text(titleStringY);
+  }
+
+  /**
+   * Changes labels for indicators
+   */
+  _updateIndicators() {
+    const {
+      frame,
+      x,
+      y,
+      side,
+      color
+    } = this.MDL;
+    const _this = this;
+
+    this.duration = frame.speed;
+    this.yScale = y.scale.d3Scale;
+    this.xScale = x.scale.d3Scale;
+    this.yAxis.tickFormat(_this.localise);
+    this.xAxis.tickFormat(_this.localise);
+    this.xAxisLeft.tickFormat(_this.localise);
+
+    const sideDim = this.SIDEDIM;
+    const stackDim = this.STACKDIM;
+    const ageDim = this.AGEDIM;
+    const groupBy = this.groupBy;
+
+    // const ages = this.model.marker.getKeys(ageDim);
+    // let ageKeys = [];
+    // ageKeys = ages.map(m => m[ageDim]);
+    // this.ageKeys = ageKeys;
+    this.ageKeys = y.scale.domain;
+
+    this.shiftedAgeKeys = this.timeSteps.map((m, i) => -i * groupBy).slice(1).reverse().concat(this.ageKeys);
+
+    this.sideKeys = side.scale.domain;
+    // // this.sideItems = side.scale.domain;
+    // // //var sideKeys = Object.keys(sideItems);
+    // // let sideKeys = [];
+    // // if (!utils.isEmpty(this.sideItems)) {
+    // //   const sideFiltered = !!this.model.marker.side.getEntity().show[sideDim];
+    // //   const sides = this.model.marker.getKeys(sideDim)
+    // //       .filter(f => !sideFiltered || this.model.marker.side.getEntity().isShown(f));
+    // //   sideKeys = sides.map(m => m[sideDim]);
+
+    // //   if (sideKeys.length > 2) sideKeys.length = 2;
+    // //   if (sideKeys.length > 1) {
+    // //     const sortFunc = this.ui.chart.flipSides ? d3.ascending : d3.descending;
+    // //     sideKeys.sort(sortFunc);
+    // //   }
+    // // }
+    if (!this.sideKeys.length) this.sideKeys = ["undefined"];
+    
+    // // const stacks = this.model.marker.getKeys(stackDim);
+    // // const stackKeys = stacks.map(m => m[stackDim]);
+
+    // // let sortedStackKeys = utils.keys(this.model.marker.color.getPalette()).reduce((arr, val) => {
+    // //     if (stackKeys.indexOf(val) != -1) arr.push(val);
+    // //     return arr;
+    // //   }, []);
+
+    // // if (sortedStackKeys.length != stackKeys.length) {
+    // //   sortedStackKeys = stackKeys.reduce((arr, val) => {
+    // //       if (arr.indexOf(val) == -1) arr.push(val);
+    // //       return arr;
+    // //     }, sortedStackKeys);
+    // // }
+    // // this.stackKeys = sortedStackKeys;
+    // //this.stackItems = this.model.marker.label_stack.getItems();
+
+    this.stackKeys = this.MDL.facet.scale.domain;
+    this.stacked = this.ui.stacked && !color.data.isConstant();// && this.model.entities.getDimension();
+
+    this.twoSided = this.sideKeys.length > 1;
+    if (this.twoSided) {
+      this.xScaleLeft = this.xScale.copy();
+    }
+
+    this.cScale = color.scale.d3Scale;
+
+    this.markers = this.MDL.y.scale.domain.sort((a,b) => d3.ascending);
+  }
+
+  _updateForecastOverlay() {
+    this.DOM.forecastOverlay.classed("vzb-hidden", 
+      !this.MDL.frame.config.endBeforeForecast || 
+      !this.ui.showForecastOverlay || 
+      //TODO date parsing here is a hack because of https://github.com/vizabi/vizabi-reactive/issues/37
+      (this.MDL.frame.value <= new Date(this.MDL.frame.config.endBeforeForecast))
+    );
+  }
+
+  _updateSideTitles() {
+    const _this = this;
+    const sideItems = this.MDL.label.data.response
+      .filter(row => row.dim == this.SIDEDIM)
+      .map(row => ({
+        [row.data[this.SIDEDIM]]: row.data.name
+      }))
+
+    const stackItems = this.MDL.label.data.response
+      .filter(row => row.dim == this.STACKDIM)
+      .map(row => ({
+        [row.data[this.STACKDIM]]: row.data.name
+      }))
+
+    
+    this.DOM.titleRight.classed("vzb-hidden", !this.twoSided);
+    if (this.twoSided) {
+      this.DOM.title.text(sideItems[this.sideKeys[1]]).call(this._textEllipsis.clear);
+      this.DOM.titleRight.text(sideItems[this.sideKeys[0]]).call(this._textEllipsis.clear);;
+    } else {
+      const title = this.sideKeys.length && sideItems[this.sideKeys[0]] ? sideItems[this.sideKeys[0]] : "";
+      this.DOM.title.text(title).call(this._textEllipsis.clear);;
+    }
+
+    if (this.smallMultiples) {
+      this.DOM.titleCenter.call(this._textEllipsis.clear).each(function(d, i) {
+        d3.select(this).text(stackItems[_this.stackKeys[i]]);
+      });
+    } else {
+      const title = this.stackKeys.length && stackItems[this.stackKeys[0]] && !this.stackSkip ? stackItems[this.stackKeys[0]] : "";
+      this.DOM.titleCenter.text(title).call(this._textEllipsis.clear);
+    }
+  }
+
+  _interaction() {
+    const _this = this;
+    return {
+      mouseover(d, i) {
+        if (utils.isTouchDevice()) return;
+        _this.model.marker.highlightMarker(d);
+        _this._showLabel(d);
+      },
+      mouseout(d, i) {
+        if (utils.isTouchDevice()) return;
+        _this.model.marker.clearHighlighted();
+      },
+      click(d, i) {
+        if (utils.isTouchDevice()) return;
+        _this.model.marker.selectMarker(d);
+      },
+      tap(d) {
+        d3.event.stopPropagation();
+        _this.model.marker.selectMarker(d);
+      }
+    };
+  }
+
+  _generateShiftedKeys() {
+    const shiftedKeys = {};
+
+  }
+
+  /**
+   * Updates entities
+   */
+  _updateEntities(reorder) {
+
+    const _this = this;
+    const time = this.MDL.frame;
+    const sideDim = this.SIDEDIM;
+    const prefixedSideDim = this.PREFIXEDSIDEDIM;
+    const ageDim = this.AGEDIM;
+    const stackDim = this.STACKDIM;
+    const prefixedStackDim = this.PREFIXEDSTACKDIM;
+    const timeDim = this.TIMEDIM;
+    const duration = (time.playing) ? time.speed : 0;
+    const groupBy = this.groupBy;
+    //var group_offset = this.model.marker.group_offset ? Math.abs(this.model.marker.group_offset % groupBy) : 0;
+
+    if (this.ui.inpercent) {
+      this.total = this._updateTotal(time.value);
+    }
+
+    const domain = this.yScale.domain();
+
+    //this.model.age.setVisible(markers);
+
+    const nextStep = d3.bisectLeft(this.timeSteps, time.value);
+
+    const shiftedAgeDim = this.SHIFTEDAGEDIM;
+
+    const markers = this.markers.map(data => {
+        const o = {};
+    o[ageDim] = o[shiftedAgeDim] = +data;
+    o[ageDim] -= nextStep * groupBy;
+    return o;
+  });
+
+    const ageData = markers.slice(0);
+
+    const outAge = {};
+    outAge[shiftedAgeDim] = markers.length * groupBy;
+    outAge[ageDim] = outAge[shiftedAgeDim] - nextStep * groupBy;
+
+    this.ageShift = nextStep * groupBy;
+
+    if (nextStep) ageData.push(outAge);
+
+    const stacks = _this.stacked ? _this.stackKeys : [_this.geoDomainDefaultValue];
+    const geoDomainDefaultValue = this.geoDomainDefaultValue;
+    const geoDomainDimension = this.geoDomainDimension;
+
+    // for(let i = 0, j = ageData.length; i < j; i++) {
+    //   const d = ageData[i];
+    //   d["side"] = _this.sideKeys.map(m => {
+    //     const r = {};
+    //     r[ageDim] = d[ageDim];
+    //     r[shiftedAgeDim] = d[shiftedAgeDim];
+    //     r[prefixedSideDim] = m;
+    //     r[sideDim] = m;
+    //     r["stack"] = stacks.map(m => {
+    //       const s = {};
+    //       s[geoDomainDimension] = geoDomainDefaultValue;
+    //       s[ageDim] = r[ageDim];
+    //       s[shiftedAgeDim] = r[shiftedAgeDim];
+    //       s[sideDim] = r[sideDim];
+    //       s[stackDim] = m;
+    //       s[prefixedSideDim] = r[prefixedSideDim];
+    //       s[prefixedStackDim] = m;
+    //       s["x_"] = 0;
+    //       s["width_"] = 0;
+    //       return s;
+    //     });
+    //     return r;
+    //   });
+    // }
+
+    this.barsData = [];
+    let ageBars = this.DOM.bars.selectAll(".vzb-bc-bar")
+      .data((d, i) => (_this.barsData[i] = ageData.map(m => {
+        const p = {};
+        p[ageDim] = m[ageDim];
+        p[shiftedAgeDim] = m[shiftedAgeDim];    
+        p.i = i;
+        return p;
+      }), this.barsData[i]), d => d[ageDim]);
+    //exit selection
+    ageBars.exit().remove();
+
+    const oneBarHeight = this.oneBarHeight;
+    const barHeight = this.barHeight;
+    const firstBarOffsetY = this.firstBarOffsetY;
+
+    //enter selection -- init bars
+    ageBars = ageBars.enter().append("g")
+      .attr("class", d => "vzb-bc-bar " + "vzb-bc-bar-" + d[ageDim])
+      .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - groupBy) * oneBarHeight) + ")")
+      .merge(ageBars);
+
+    // this.ageBars.attr("class", function(d) {
+    //     return "vzb-bc-bar " + "vzb-bc-bar-" + d[ageDim];
+    //   })
+
+
+    let sideBars = ageBars.selectAll(".vzb-bc-side").data((d, i) => (d.side = _this.sideKeys.map(m => {
+      const r = {};
+      r[ageDim] = d[ageDim];
+      r[shiftedAgeDim] = d[shiftedAgeDim];
+      r[prefixedSideDim] = m;
+      r[sideDim] = m;
+      r.i = d.i;
+      return r;
+    }), d.side), d => d[prefixedSideDim]);
+
+    sideBars.exit().remove();
+    sideBars = sideBars.enter().append("g")
+      .attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
+      .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "")
+      .merge(sideBars);
+
+    if (reorder) {
+      sideBars
+        .attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
+        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
+    }
+
+    const _attributeUpdaters = this._attributeUpdaters;
+    const keyFn = this.model.dataMap.keyFn;
+
+    let stackBars = sideBars.selectAll(".vzb-bc-stack").data(d => ( d.stack = (_this.smallMultiples ? [stacks[d.i]] : stacks).map(m => {
+      const s = {};
+      s[geoDomainDimension] = geoDomainDefaultValue;
+      s[ageDim] = d[ageDim];
+      s[shiftedAgeDim] =
+      s[sideDim] = d[sideDim];
+      s[stackDim] = m;
+      s[prefixedSideDim] = d[prefixedSideDim];
+      s[prefixedStackDim] = m;
+      s["x_"] = 0;
+      s["width_"] = 0;
+      s[SYMBOL_KEY] = keyFn({
+        [ageDim]: d[shiftedAgeDim],
+        [sideDim]: d[prefixedSideDim],
+        [stackDim]: m,
+      })
+      s.i = d.i;
+      return s;
+    }), d.stack), d => d[prefixedStackDim]);
+
+    stackBars.exit().remove();
+    stackBars = stackBars.enter().append("rect")
+      .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
+      .attr("y", 0)
+      .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
+      .attr("fill", d => _this.cScale(_this.frame[d[SYMBOL_KEY]] || d[prefixedStackDim]))
+      //.attr("width", _attributeUpdaters._newWidth)
+      .attr("x", _attributeUpdaters._newX)
+      //.on("mouseover", _this.interaction.mouseover)
+      //.on("mouseout", _this.interaction.mouseout)
+      //.on("click", _this.interaction.click)
+      //.onTap(_this.interaction.tap)
+      .merge(stackBars);
+
+    if (reorder) stackBars
+      .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
+      .attr("fill", d => _this.cScale(_this.frame[d[SYMBOL_KEY]] || d[prefixedStackDim]))
+      .order();
+
+    const stepShift = (ageData[0][shiftedAgeDim] - ageData[0][ageDim]) - this.shiftScale(time.value) * groupBy;
+
+    if (duration) {
+      const transition = d3.transition()
+        .duration(duration)
+        .ease(d3.easeLinear);
+
+      ageBars
+        .transition(transition)
+        .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
+      stackBars
+        .transition(transition)
+        .attr("width", _attributeUpdaters._newWidth)
+        .attr("x", _attributeUpdaters._newX);
+    } else {
+      ageBars.interrupt()
+        .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
+      stackBars.interrupt()
+        .attr("width", _attributeUpdaters._newWidth)
+        .attr("x", _attributeUpdaters._newX);
+    }
+
+    this.ageBars = ageBars;
+    this.sideBars = sideBars;
+    this.stackBars = stackBars;
+
+    this.entityLabels = this.DOM.labels.selectAll(".vzb-bc-label text")
+      .data(markers);
+    //exit selection
+    this.entityLabels.exit().remove();
+
+    this.entityLabels = this.entityLabels.enter().append("g")
+      .attr("class", d => "vzb-bc-label" + " vzb-bc-label-" + d[shiftedAgeDim])
+      .append("text")
+      .attr("class", "vzb-bc-age")
+      .merge(this.entityLabels)
+      .each((d, i) => {
+        const yearOlds = _this.localise("popbyage/yearOlds");
+
+        let age = parseInt(d[shiftedAgeDim], 10);
+
+        if (groupBy > 1) {
+          const nextAge = (age + groupBy - 1);
+          age = age + "-to-" + (nextAge > domain[1] ? domain[1] : nextAge);
+        }
+
+        d["text"] = age + yearOlds;
+      })
+      .attr("y", (d, i) => firstBarOffsetY - (d[shiftedAgeDim] - domain[0]) * oneBarHeight - 10)
+      .attr("dy", (d, i) => (d[shiftedAgeDim] + groupBy) > domain[1] ? (groupBy - domain[1] + d[shiftedAgeDim]) / groupBy * barHeight : 0);
+    // .style("fill", function(d) {
+    //   var color = _this.cScale(values.color[d[ageDim]]);
+    //   return d3.rgb(color).darker(2);
+    // });
+
+    this._year.setText(this.localise(this.MDL.frame.value), this.duration);
+  }
+
+  _interpolateDiagonal(pValues, nValues, fraction) {
+    const _this = this;
+    const data = {};
+    let val1, val2, shiftedAge, nKey, pKey;
+    const groupBy = this.groupBy;
+    const geoDefault = this.geoDomainDefaultValue;
+
+    if (this.geoLess && this.stackSkip && this.sideSkip) {
+      utils.forEach(_this.ageKeys, age => {
+        shiftedAge = +age + groupBy;
+        pKey = age + "," + geoDefault;
+        nKey = shiftedAge + "," + geoDefault;
+        val1 = pValues[pKey];
+        val2 = nValues[nKey] || 0;
+        data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+      });
+      nKey = 0 + "," + geoDefault;
+      data[nKey] = nValues[nKey] || 0;
+    } else if (this.stackSkip && this.geoLess) {
+      utils.forEach(_this.sideKeys, side => {
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          pKey = side + "," + age + "," + geoDefault;
+          nKey = side + "," + shiftedAge + "," + geoDefault;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        nKey = side + "," + 0 + "," + geoDefault;
+        data[nKey] = nValues[nKey] || 0;
+      });
+    } else if (this.stackSkip) {
+      utils.forEach(_this.sideKeys, side => {
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          pKey = side + "," + age;
+          nKey = side + "," + shiftedAge;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        nKey = side + "," + 0;
+        data[nKey] = nValues[nKey] || 0;
+      });
+    } else if (this.sideSkip && this.geoLess) {
+      utils.forEach(_this.stackKeys, stack => {
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          pKey = stack + "," + age + "," + geoDefault;
+          nKey = stack + "," + shiftedAge + "," + geoDefault;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        nKey = stack + "," + 0 + "," + geoDefault;
+        data[nKey] = nValues[nKey] || 0;
+      });
+    } else if (this.sideSkip) {
+      utils.forEach(_this.stackKeys, stack => {
+        utils.forEach(_this.ageKeys, age => {
+          shiftedAge = +age + groupBy;
+          pKey = stack + "," + age;
+          nKey = stack + "," + shiftedAge;
+          val1 = pValues[pKey];
+          val2 = nValues[nKey] || 0;
+          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+        });
+        nKey = stack + "," + 0;
+        data[nKey] = nValues[nKey] || 0;
+      });
+    } else {
+      utils.forEach(_this.stackKeys, stack => {
+        utils.forEach(_this.sideKeys, side => {
+          utils.forEach(_this.ageKeys, age => {
+            shiftedAge = +age + groupBy;
+            pKey = stack + "," + side + "," + age;
+            nKey = stack + "," + side + "," + shiftedAge;
+            val1 = pValues[pKey];
+            val2 = nValues[nKey] || 0;
+            data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
+          });
+          nKey = stack + "," + side + "," + 0;
+          data[nKey] = nValues[nKey] || 0;
+        });
+      });
+    }
+    return data;
+  }
+
+  _setupLimits() {
+    const limits = this._createLimits2(this.model.dataMapCache);
+    this._updateLimits2(limits);
+  }
+
+  _createLimits2(data) {
+    const extents = {};
+    const totals = {};
+
+    const ageDim = this.AGEDIM;
+    const sideDim = this.SIDEDIM;
+    const timeDim = this.TIMEDIM;
+    let extentKeyStr, totalKeyStr;
+
+    for (const row of data.rows()) {
+      totalKeyStr = "_" + row[sideDim]
+        + "_" + row[timeDim];
+      !totals[totalKeyStr] && (totals[totalKeyStr] = 0);
+      totals[totalKeyStr] += row.x;
+  
+      extentKeyStr = "_" + row[sideDim]
+        + "_" + row[ageDim]
+        + "_" + row[timeDim];
+      !extents[extentKeyStr] && (extents[extentKeyStr] = 0);
+      extents[extentKeyStr] += row.x;
+    };
+
+    return {totals, max: d3.max(Object.values(extents))};
+  }
+
+  _updateLimits2(limits, stackKey, i) {
+    const _this = this;
+    const axisX = this.MDL.x;
+
+    this.domains = [];
+
+    if (this.smallMultiples && stackKey) {
+      if (this.ui.inpercent) {
+        this.domains[i] = [0, Math.max(...this.sideKeys.map(s => _this.inpercentMaxLimits[stackKey][s]))];
+      } else {
+        this.domains[i] = (axisX.domainMin != null && axisX.domainMax != null) ? [+axisX.domainMin, +axisX.domainMax] : [0, Math.max(...this.sideKeys.map(s => _this.maxLimits[stackKey][s]))];
+      }
+    } else {
+      if (this.ui.inpercent) {
+        this.domains[0] = [0, Math.max(...this.sideKeys.map(s => _this.inpercentMaxLimits[s]))];
+      } else {
+        this.domains[0] = axisX.scale.config.domain ? axisX.scale.domain : [0, limits.max];
+      }
+    }
+
+    this.xScale.domain(this.domains[0]);
+    if (this.xScaleLeft) this.xScaleLeft.domain(this.xScale.domain());
+
+    this.domainScalers = this._calcDomainScalers();
+  }
+
+
+  // _createLimits2() {
+  //   this.model.dataMapCache.groupBy([this.STACKDIM, this.SIDEDIM, this.AGEDIM]).map((g,key)=>{
+  //     const result = this._getExtentAndTotal(g.values(), "x");
+  //     return Object.assign(key, {min: result[0], max: result[1], total: result[2]})})
+
+
+
+  //   }
+
+
+  // _getExtentAndTotal(iter, concept) {
+  //   let min, max, value, row, total = 0;
+  //   for (row of iter) {
+  //       if ((value = row[concept]) != null) {
+  //         if (min === undefined) {
+  //           if (value >= value)
+  //               // find first comparable values
+  //               min = max = total = value;
+  //         } else {
+  //             total += value;
+  //             // compare remaining values 
+  //             if (min > value) min = value;
+  //             if (max < value) max = value;
+  //         }
+  //       }
+  //   }
+  //   return [min, max, total];
+  // }
+
+  _createLimits(frames, stackKey) {
+    const _this = this;
+
+    const stackKeys = stackKey ? [stackKey] : this.stackKeys;  
+    //const sideKeysNF = Object.keys(this.model.marker.side.getItems());
+    const sideKeysNF = this.MDL.label.data.response
+      .filter(row => row.dim == this.SIDEDIM)
+      .flatMap(row => row.data)
+      .map(row => row[this.SIDEDIM]);
+
+    if (!sideKeysNF.length) sideKeysNF.push("undefined");
+
+    const totals = {};
+    const inpercentMaxLimits = {};
+    const maxLimits = {};
+    const geoDefault = this.geoLess ? "," + this.geoDomainDefaultValue : "";
+    let key;
+    sideKeysNF.forEach(s => {
+      maxLimits[s] = [];
+      inpercentMaxLimits[s] = [];
+    });
+
+    if (_this.stackSkip && _this.sideSkip) {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
+        totals[time] = {};
+        let ageSum = 0;
+        const sideMaxLimits = [];
+        utils.forEach(_this.ageKeys, age => {
+          let stackSum = 0;
+          key = age + geoDefault;
+          if (frame[key]) {
+            stackSum += frame[key];
+            ageSum += stackSum;
+          }
+          sideMaxLimits.push(stackSum);
+        });
+        totals[time][sideKeysNF[0]] = ageSum;
+        const maxSideLimit = Math.max(...sideMaxLimits);
+        inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
+        maxLimits[sideKeysNF[0]].push(maxSideLimit);
+      });
+    } else if (_this.sideSkip) {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
+        totals[time] = {};
+        let ageSum = 0;
+        const sideMaxLimits = [];
+        utils.forEach(_this.ageKeys, age => {
+          let stackSum = 0;
+          utils.forEach(stackKeys, stack => {
+            key = stack + "," + age + geoDefault;
+            if (frame[key]) {
+              stackSum += frame[key];
+              ageSum += stackSum;
+            }
+          });
+          sideMaxLimits.push(stackSum);
+        });
+        totals[time][sideKeysNF[0]] = ageSum;
+        const maxSideLimit = Math.max(...sideMaxLimits);
+        inpercentMaxLimits[sideKeysNF[0]].push(maxSideLimit / ageSum);
+        maxLimits[sideKeysNF[0]].push(maxSideLimit);
+      });
+    } else if (_this.stackSkip) {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
+        totals[time] = {};
+        utils.forEach(sideKeysNF, side => {
+          let ageSum = 0;
+          const sideMaxLimits = [];
+          utils.forEach(_this.ageKeys, age => {
+            let stackSum = 0;
+            key = side + "," + age + geoDefault;
+            if (frame[key]) {
+              stackSum += frame[key];
+              ageSum += stackSum;
+            }
+            sideMaxLimits.push(stackSum);
+          });
+          totals[time][side] = ageSum;
+          const maxSideLimit = Math.max(...sideMaxLimits);
+          inpercentMaxLimits[side].push(maxSideLimit / ageSum);
+          maxLimits[side].push(maxSideLimit);
+        });
+      });
+    } else {
+      utils.forEach(frames, (f, time) => {
+        const frame = f.axis_x;
+        totals[time] = {};
+        utils.forEach(sideKeysNF, side => {
+          let ageSum = 0;
+          const sideMaxLimits = [];
+          utils.forEach(_this.ageKeys, age => {
+            let stackSum = 0;
+            utils.forEach(stackKeys, stack => {
+              key = stack + "," + side + "," + age + geoDefault;
+              if (frame[key]) {
+                stackSum += frame[key];
+                ageSum += stackSum;
+              }
+            });
+            sideMaxLimits.push(stackSum);
+          });
+          totals[time][side] = ageSum;
+          const maxSideLimit = Math.max(...sideMaxLimits);
+          inpercentMaxLimits[side].push(maxSideLimit / ageSum);
+          maxLimits[side].push(maxSideLimit);
+        });
+      });
+    }
+
+    if (stackKey) {
+      this.maxLimits[stackKey] = {};
+      this.inpercentMaxLimits[stackKey] = {};
+      sideKeysNF.forEach(s => {
+        _this.maxLimits[stackKey][s] = Math.max(...maxLimits[s]);
+        _this.inpercentMaxLimits[stackKey][s] = Math.max(...inpercentMaxLimits[s]);
+      });
+      this.totals[stackKey] = totals;
+    } else {
+      sideKeysNF.forEach(s => {
+        _this.maxLimits[s] = Math.max(...maxLimits[s]);
+        _this.inpercentMaxLimits[s] = Math.max(...inpercentMaxLimits[s]);
+      });
+      this.totals = totals;
+    }
+  }
+
+  _updateLimits(stackKey, i) {
+    const _this = this;
+    const axisX = this.model.marker.axis_x;
+    if (this.smallMultiples && stackKey) {
+      if (this.ui.inpercent) {
+        this.domains[i] = [0, Math.max(...this.sideKeys.map(s => _this.inpercentMaxLimits[stackKey][s]))];
+      } else {
+        this.domains[i] = (axisX.domainMin != null && axisX.domainMax != null) ? [+axisX.domainMin, +axisX.domainMax] : [0, Math.max(...this.sideKeys.map(s => _this.maxLimits[stackKey][s]))];
+      }
+    } else {
+      if (this.ui.inpercent) {
+        this.domains[0] = [0, Math.max(...this.sideKeys.map(s => _this.inpercentMaxLimits[s]))];
+      } else {
+        this.domains[0] = (axisX.domainMin != null && axisX.domainMax != null) ? [+axisX.domainMin, +axisX.domainMax] : [0, Math.max(...this.sideKeys.map(s => _this.maxLimits[s]))];
+      }
+    }
+
+    this.xScale.domain(this.domains[0]);
+    if (this.xScaleLeft) this.xScaleLeft.domain(this.xScale.domain());
+
+    this.domainScalers = this._calcDomainScalers();
+  }
+
+  _calcDomainScalers() {
+    const domain = this.domains.map(m => m[1] - m[0])
+    const sumDomains = domain.reduce((a, b) => a + b);
+    return domain.map(d => d / sumDomains);
+  }
+
+  _getLimits() {
+    const _this = this;
+    return function() {
+      const groupBy = _this.groupBy;
+      _this.model.marker.getFrame(null, frames => {
+        if(!frames || groupBy !== _this.groupBy) return;
+        const fullFrames = _this.groupBy !== 1 && _this.lock && _this.lockFrame ? Object.assign({ [_this.model.time.parse("" + _this.lock)]: _this.lockFrame }, frames) : frames;
+        if (_this.smallMultiples) {
+          utils.forEach(_this.stackKeys, (stackKey, i) => {
+            _this._createLimits(fullFrames, stackKey);
+            _this._updateLimits(stackKey, i);            
+          });
+        } else {
+          _this._createLimits(fullFrames);
+          _this._updateLimits();
+        }
+        _this.resize();
+        _this._updateEntities(true);
+        _this.updateBarsOpacity();
+        _this._redrawLocked();
+      });
+    }();
+  }
+
+  updateSize() {
+    this.services.layout.size;
+    const _this = this;
+
+    const {
+      x,
+      y
+    } = this.MDL;
+
+    const {
+      graph,
+      barsCrop,
+      lockedCrop,
+      labelsCrop,
+      yAxisEl,
+      xAxisEl,
+      xAxisLeftEl,
+      bars,
+      lockedPaths,
+      labels,
+      title,
+      titleCenter,
+      titleRight,
+      xTitleEl,
+      xInfoEl,
+      yearLocked,
+    } = this.DOM;
+
+    const margin = this.profileConstants.margin;
+    const infoElHeight = this.profileConstants.infoElHeight;
+
+    const deltaMarginTop = this.sideSkip ? margin.top * 0.23 : 0;
+    //stage
+    this.height = (parseInt(this.element.style("height"), 10) + deltaMarginTop - margin.top - margin.bottom) || 0;
+    this.width = (parseInt(this.element.style("width"), 10) - margin.left - margin.right) || 0;
+    this.fullWidth = parseInt(this.element.style("width"), 10) || 0;
+    this.graphWidth = this.getGraphWidth(this.width, margin.between);
+
+    if (this.height <= 0 || this.width <= 0) return utils.warn("Pop by age resize() abort: vizabi container is too little or has display:none");
+
+    let _sum = 0;
+    let _prevSum = 0;
+    const graphWidthSum = this.graphWidth.map(width => {_prevSum = _sum; _sum += width; return _prevSum;});
+    graph
+      .attr("transform", (d, i) => "translate(" + Math.round(margin.left + margin.between * i + graphWidthSum[i]) + "," + (margin.top - deltaMarginTop) + ")");
+
+    barsCrop
+      .attr("width", (d, i) => this.graphWidth[i])
+      .attr("height", Math.max(0, this.height));
+
+    lockedCrop
+      //.attr("width", (d, i) => this.graphWidth[i])
+      .attr("height", Math.max(0, this.height));
+
+    labelsCrop
+      .attr("width", (d, i) => this.graphWidth[i])
+      .attr("height", Math.max(0, this.height));
+
+    const groupBy = this.groupBy;
+
+    const domain = d3.extent(this.yScale.domain());
+    this.oneBarHeight = this.height / (domain[1] - domain[0]);
+    const barHeight = this.barHeight = this.oneBarHeight * groupBy; // height per bar is total domain height divided by the number of possible markers in the domain
+    this.firstBarOffsetY = this.height - this.barHeight;
+
+    if (this.stackBars) this.stackBars.attr("height", barHeight - (groupBy > 2 ? 1 : 0));
+
+    if (this.sideBars) this.sideBars
+      .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
+
+
+    //update scales to the new range
+    //apply scales to axes and redraw
+    this.yScale.range([this.height, 0]);
+
+    const yScaleCopy = this.yScale.copy();
+    if (groupBy > 2) {
+      yScaleCopy.ticks = () => d3.range(domain[0], domain[1] + 1, groupBy);
+    }
+
+    yAxisEl.each(function(d, i) {
+      _this.yAxis.scale(yScaleCopy.range([_this.height, 0]))
+        .tickSizeInner(-_this.graphWidth[i])
+        .tickSizeOuter(0)
+        .tickPadding(6)
+        .tickSizeMinor(-_this.graphWidth[i], 0)
+        .labelerOptions({
+          scaleType:  y.scale.type,
+          toolMargin: margin,
+          limitMaxTickNumber: 19,
+          fitIntoScale: "optimistic",
+          isPivotAuto: false,
+          formatter: this.localise
+        });
+      
+      d3.select(this).attr("transform", "translate(" + 0 + ",0)")
+        .call(_this.yAxis)
+        .classed("vzb-bc-axis-text-hidden", !_this.getYAxisVisibility(i));
+    });
+    yAxisEl.select(".tick line").classed("vzb-hidden", true);
+
+    const maxRange = _this.twoSided ? ((_this.graphWidth[0] - _this.profileConstants.centerWidth) * 0.5) : _this.graphWidth[0];
+    this.xScale.range([0, maxRange]);
+
+    const format = this.ui.inpercent ? d3.format((groupBy > 3 ? ".1" : ".1") + "%") : this.localise;
+
+    const translateX = [];
+    xAxisEl.each(function(d, i) {
+      const maxRange = _this.twoSided ? ((_this.graphWidth[i] - _this.profileConstants.centerWidth) * 0.5) : _this.graphWidth[i];
+      translateX[i] = _this.twoSided ? ((_this.graphWidth[i] + _this.profileConstants.centerWidth) * 0.5) : 0;
+
+      _this.xAxis.scale(_this.xScale.copy().domain(_this.domains[i]).range([0, maxRange]))
+        .tickFormat(format)
+        .tickSizeInner(-_this.height)
+        .tickSizeOuter(0)
+        .tickPadding(6)
+        .tickSizeMinor(0, 0)
+        .labelerOptions({
+          scaleType: x.scale.type,
+          toolMargin: margin,
+          limitMaxTickNumber: 6,
+          formatter: this.localise
+        });
+
+      d3.select(this)
+        .attr("transform", "translate(" + translateX[i] + "," + _this.height + ")")
+        .call(_this.xAxis);
+      const zeroTickEl = d3.select(this).selectAll(".tick text");
+      const tickCount = zeroTickEl.size();
+      if (tickCount > 0) {
+        const zeroTickBBox = zeroTickEl.node().getBBox();
+        if (tickCount > 1) {
+          d3.select(zeroTickEl.node()).attr("dx", (_this.twoSided ? -_this.profileConstants.centerWidth * 0.5 : 0) - zeroTickBBox.width * 0.5 - zeroTickBBox.x);
+        }
+        zeroTickEl.classed("vzb-invisible", (_this.graphWidth[i] + margin.between) < zeroTickBBox.width);
+      }
+    });
+
+    xAxisEl.select(".tick line").classed("vzb-hidden", true);
+    xAxisLeftEl.classed("vzb-hidden", !this.twoSided);
+    if (this.twoSided) {
+      this.xScaleLeft.range([(this.graphWidth[0] - this.profileConstants.centerWidth) * 0.5, 0]);
+
+      xAxisLeftEl.each(function(d, i) {
+      
+        _this.xAxisLeft.scale(_this.xScaleLeft.copy().domain(_this.domains[i]).range([(_this.graphWidth[i] - _this.profileConstants.centerWidth) * 0.5, 0]))
+          .tickFormat(format)
+          .tickSizeInner(-_this.height)
+          .tickSizeOuter(0)
+          .tickPadding(6)
+          .tickSizeMinor(0, 0)
+          .labelerOptions({
+            scaleType: x.scale.type,
+            toolMargin: margin,
+            limitMaxTickNumber: 6,
+            formatter: this.localise
+          });
+        d3.select(this)
+          .attr("transform", "translate(0," + _this.height + ")")
+          .call(_this.xAxisLeft);
+        //hide left axis zero tick
+        const tickNodes = d3.select(this).selectAll(".tick").classed("vzb-hidden", false).nodes();
+        d3.select(tickNodes[tickNodes.length - 1]).classed("vzb-hidden", true);
+      });
+    }
+
+    const isRTL = this.services.locale.isRTL();
+    
+    bars.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
+    lockedPaths.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
+    labels.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
+
+    const titleSpace = (i) => (translateX[i] - this.profileConstants.titlesSpacing) < 0 ? _this.profileConstants.centerWidth * 0.5 : _this.profileConstants.titlesSpacing;
+
+    title
+      .attr("x", (d, i) => this.twoSided ? translateX[i] - _this.profileConstants.centerWidth * 0.5 - titleSpace(i) : 0)
+      .style("text-anchor", this.twoSided ? "end" : "")
+      .attr("y", -margin.top * 0.275 - deltaMarginTop)
+      .each(function(d, i) {
+        _this._textEllipsis.wrap(this, _this.twoSided ? (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5 : _this.graphWidth[i] +  margin.between)
+      });
+    titleRight
+      .attr("x", (d, i) => translateX[i] - _this.profileConstants.centerWidth * 0.5 + titleSpace(i))
+      .attr("y", -margin.top * 0.275 - deltaMarginTop)
+      .each(function(d, i) {
+        _this._textEllipsis.wrap(this, (_this.graphWidth[i] + margin.between - titleSpace(i)) * 0.5)
+      });
+    titleCenter
+      .attr("x", (d, i) => this.twoSided ? translateX[i] - _this.profileConstants.centerWidth * 0.5: _this.graphWidth[i] * 0.5)
+      .style("text-anchor", "middle")
+      .attr("y", (-margin.top - deltaMarginTop)* 0.035 )
+      .each(function(d, i) {
+        _this._textEllipsis.wrap(this, _this.graphWidth[i] +  margin.between)
+      });
+
+    xTitleEl
+      .style("font-size", infoElHeight + "px")
+      .attr("transform", "translate(" + (isRTL ? margin.left + this.width + margin.right * 0.6 : margin.left * 0.4) + "," + (margin.top * 0.35) + ")");
+
+    if (xInfoEl.select("svg").node()) {
+      const titleBBox = xTitleEl.node().getBBox();
+      const t = utils.transform(xTitleEl.node());
+      const hTranslate = isRTL ? (titleBBox.x + t.translateX - infoElHeight * 1.4) : (titleBBox.x + t.translateX + titleBBox.width + infoElHeight * 0.4);
+
+      xInfoEl.select("svg")
+        .attr("width", infoElHeight + "px")
+        .attr("height", infoElHeight + "px");
+      xInfoEl.attr("transform", "translate("
+        + hTranslate + ","
+        + (t.translateY - infoElHeight * 0.8) + ")");
+    }
+
+    const yearLabelOptions = {
+      topOffset: this.services.layout.projector ? 25 : this.services.layout.profile === "small" ? 10 : 15,
+      leftOffset: this.services.layout.profile === "small" ? 5 : 10,
+      rightOffset: this.services.layout.profile === "small" ? 5 : 10,
+      xAlign: isRTL ? "left" : "right",
+      yAlign: "top",
+      heightRatio: this.services.layout.projector ? 0.5 : 0.5,
+      //widthRatio: this.services.layout.profile === "large" ? 3 / 8 : 5 / 10
+    };
+
+    //year resized
+    this._year
+      .setConditions(yearLabelOptions)
+      .resize(this.fullWidth, margin.top);
+    yearLocked.attr("x", this.width + margin.left + margin.right - 10).attr("y", (margin.top - deltaMarginTop) * (this.services.layout.profile === "large" ? 1.27 : 1.27));
+
+  }
+
+  updateBarsOpacity(duration) {
+    const _this = this;
+
+    const highlightedFilter = this.MDL.highlighted.data.filter;
+    const selectedFilter = this.MDL.selected.data.filter;
+    this.someSelected = selectedFilter.any();
+    this.nonSelectedOpacityZero = false;
+
+    const OPACITY_HIGHLT = 1.0;
+    const OPACITY_HIGHLT_DIM = this.ui.opacityHighlightDim;
+    const OPACITY_SELECT = 1.0;
+    const OPACITY_REGULAR = this.ui.opacityRegular;
+    const OPACITY_SELECT_DIM = this.ui.opacitySelectDim;
+
+    const nonSelectedOpacityZero = this.ui.opacitySelectDim < 0.01;
+    const nonSelectedOpacityZeroFlag = nonSelectedOpacityZero != this.nonSelectedOpacityZero;
+    const someSelected = this.someSelected;
+    const someHighlighted = this.someHighlighted;
+
+    this.stackBars.each(function(d) {
+      const isSelected =  someSelected ? selectedFilter.has(d) : false;
+      const isHighlighted = someHighlighted ? highlightedFilter.has(d): false;
+      const bar = d3.select(this);
+
+      bar.style("opacity", isHighlighted ? OPACITY_HIGHLT
+        :
+        someSelected ? (isSelected ? OPACITY_SELECT : OPACITY_SELECT_DIM)
+          :
+          someHighlighted ? OPACITY_HIGHLT_DIM : OPACITY_REGULAR)
+        .style("stroke", isSelected ? "#333" : null)
+        .style("y", isSelected ? "0.5px" : null);
+
+      if(nonSelectedOpacityZeroFlag) {
+        bar.style("pointer-events", !someSelected || !nonSelectedOpacityZero || isSelected ? "visible" : "none");
+      }
+    });
+
+    this.nonSelectedOpacityZero = OPACITY_SELECT_DIM < 0.01;
+  }
+
+  getYAxisVisibility(index) {
+    return index == 0 ? true : false;
+  }
+
+}
+
+
+// const {
+//   utils,
+//   Component,
+//   helpers: {
+//     "d3.axisWithLabelPicker": axisSmart,
+//     "d3.dynamicBackground": DynamicBackground,
+//     "textEllipsis": TextEllipsis
+//   },
+//   iconset: {
+//     question: iconQuestion
+//   },
+// } = Vizabi;
 
 // POP BY AGE CHART COMPONENT
-const PopByAge = Component.extend("popbyage", {
+const _PopByAge = {
 
   /**
    * Initializes the component (Bar Chart).
@@ -738,7 +2206,7 @@ const PopByAge = Component.extend("popbyage", {
 
   updateUIStrings() {
     const _this = this;
-    this.translator = this.model.locale.getTFunction();
+    this.localise = this.model.locale.getTFunction();
 
     const xTitle = this.xTitleEl.select("text").text(_this.translator("popbyage/title"));
 
@@ -778,10 +2246,18 @@ const PopByAge = Component.extend("popbyage", {
    * Changes labels for indicators
    */
   _updateIndicators() {
+    const {
+      frame,
+      x,
+      y,
+      side
+    } = this.MDL;
+
+
     const _this = this;
-    this.duration = this.model.time.delayAnimations;
-    this.yScale = this.model.marker.axis_y.getScale();
-    this.xScale = this.model.marker.axis_x.getScale();
+    this.duration = frame.speed;
+    this.yScale = y.scale.d3Scale;
+    this.xScale = x.scale.d3Scale;
     this.yAxis.tickFormat(_this.model.marker.axis_y.getTickFormatter());
     this.xAxis.tickFormat(_this.model.marker.axis_x.getTickFormatter());
     this.xAxisLeft.tickFormat(_this.model.marker.axis_x.getTickFormatter());
@@ -791,10 +2267,11 @@ const PopByAge = Component.extend("popbyage", {
     const ageDim = this.AGEDIM;
     const groupBy = this.groupBy;
 
-    const ages = this.model.marker.getKeys(ageDim);
-    let ageKeys = [];
-    ageKeys = ages.map(m => m[ageDim]);
-    this.ageKeys = ageKeys;
+    // const ages = this.model.marker.getKeys(ageDim);
+    // let ageKeys = [];
+    // ageKeys = ages.map(m => m[ageDim]);
+    //this.ageKeys = ageKeys;
+    this.ageKeys = 
 
     this.shiftedAgeKeys = this.timeSteps.map((m, i) => -i * groupBy).slice(1).reverse().concat(ageKeys);
 
@@ -1054,7 +2531,7 @@ const PopByAge = Component.extend("popbyage", {
   _updateEntities(reorder) {
 
     const _this = this;
-    const time = this.model.time;
+    const time = this.MDL.frame;
     const sideDim = this.SIDEDIM;
     const prefixedSideDim = this.PREFIXEDSIDEDIM;
     const ageDim = this.AGEDIM;
@@ -1720,6 +3197,4 @@ const PopByAge = Component.extend("popbyage", {
     this.nonSelectedOpacityZero = _this.model.marker.opacitySelectDim < 0.01;
   }
 
-});
-
-export default PopByAge;
+}

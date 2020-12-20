@@ -1,9 +1,11 @@
 {
   "main": "build/popbyage.js",
   "scripts": {
-    "link": "npm link ../vizabi",
-    "build": "cross-env NODE_ENV=production webpack --progress",
-    "deploy": "tool-deploy"
+    "link": "npm link ../vizabi-shared-components",
+    "start": "rollup -c",
+    "build": "cross-env NODE_ENV=production rollup -c",
+    "deploy": "tool-deploy",
+    "postinstall": "npm run link"
   },
   "files": [
     "build"
@@ -11,11 +13,11 @@
   "devDependencies": {
     "cross-env": "^5.0.0",
     "css.escape": "^1.5.1",
-    "vizabi": "latest",
+    "vizabi-shared-components": "github:vizabi/vizabi-shared-components",
     "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler"
   },
   "name": "vizabi-popbyage",
-  "version": "2.3.2",
+  "version": "3.0.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vizabi/vizabi-popbyage.git"

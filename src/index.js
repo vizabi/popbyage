@@ -1,97 +1,140 @@
 import "./styles.scss";
-import component from "./component";
+import { 
+  BaseComponent,
+  TimeSlider,
+  DataWarning,
+  DataNotes,
+  LocaleService,
+  LayoutService,
+  TreeMenu,
+  SteppedSlider,
+  Dialogs,
+  ButtonList 
+} from "VizabiSharedComponents";
+import VizabiPopByAge from "./component";
+import { observable } from "mobx";
 
 const VERSION_INFO = { version: __VERSION, build: __BUILD };
 
-//BAR CHART TOOL
-const PopByAge = Vizabi.Tool.extend("PopByAge", {
+export default class PopByAge extends BaseComponent {
 
-  /**
-   * Initializes the tool (Bar Chart Tool).
-   * Executed once before any template is rendered.
-   * @param {Object} placeholder Placeholder element for the tool
-   * @param {Object} external_model Model as given by the external page
-   */
-  init(placeholder, external_model) {
+  constructor(config){
+    const marker = config.model.stores.markers.get("popbyage");
 
-    this.name = "popbyage";
+    config.name = "popbyage";
 
-    //specifying components
-    this.components = [{
-      component,
-      placeholder: ".vzb-tool-viz",
-      model: ["state.time", "state.marker", "state.entities", "state.entities_side", "state.entities_age", "state.entities_geodomain", "locale", "ui"] //pass models to component
-    }, {
-      component: Vizabi.Component.get("timeslider"),
-      placeholder: ".vzb-tool-timeslider",
-      model: ["state.time", "state.marker", "ui"]
-    }, {
-      component: Vizabi.Component.get("dialogs"),
-      placeholder: ".vzb-tool-dialogs",
-      model: ["state", "ui", "locale"]
-    }, {
-      component: Vizabi.Component.get("buttonlist"),
-      placeholder: ".vzb-tool-buttonlist",
-      model: ["state", "ui", "locale"]
-    }, {
-      component: Vizabi.Component.get("treemenu"),
-      placeholder: ".vzb-tool-treemenu",
-      model: ["state.marker", "state.time", "locale", "ui"]
-    }, {
-      component: Vizabi.Component.get("datanotes"),
-      placeholder: ".vzb-tool-datanotes",
-      model: ["state.marker", "locale"]
-    }, {
-      component: Vizabi.Component.get("steppedspeedslider"),
-      placeholder: ".vzb-tool-stepped-speed-slider",
-      model: ["state.time", "locale"]
+    config.subcomponents = [{
+      type: VizabiPopByAge,
+      placeholder: ".vzb-popbyage",
+      model: marker,
+      name: "chart"
+    },{
+      type: TimeSlider,
+      placeholder: ".vzb-timeslider",
+      model: marker,
+      name: "time-slider"
+    },{
+      type: SteppedSlider,
+      placeholder: ".vzb-speedslider",
+      model: marker,
+      name: "speed-slider"
+    },{
+      type: TreeMenu,
+      placeholder: ".vzb-treemenu",
+      model: marker,
+      name: "tree-menu"
+    },{
+      type: DataWarning,
+      placeholder: ".vzb-datawarning",
+      model: marker
+    },{
+      type: DataNotes,
+      placeholder: ".vzb-datanotes",
+      model: marker
+    },{
+      type: Dialogs,
+      placeholder: ".vzb-dialogs",
+      model: marker,
+      name: "dialogs"
+    },{
+      type: ButtonList,
+      placeholder: ".vzb-buttonlist",
+      model: marker,
+      name: "buttons"
     }];
 
-    //constructor is the same as any tool
-    this._super(placeholder, external_model);
+    config.template = `
+      <div class="vzb-popbyage"></div>
+      <div class="vzb-animationcontrols">
+        <div class="vzb-timeslider"></div>
+        <div class="vzb-speedslider"></div>
+      </div>
+      <div class="vzb-sidebar">
+        <div class="vzb-dialogs"></div>
+        <div class="vzb-buttonlist"></div>
+      </div>
+      <div class="vzb-treemenu"></div>
+      <div class="vzb-datawarning"></div>
+      <div class="vzb-datanotes"></div>
+    `;
+  
+    config.services = {
+      locale: new LocaleService(config.locale),
+      layout: new LayoutService({placeholder: config.placeholder})
+    };
+
+    //register locale service in the marker model
+    config.model.config.markers.popbyage.data.locale = observable({
+      get id() { return config.services.locale.id; }
+    });
+    
+    super(config);
+  }
+}
+
+// PopByAge.DEFAULT_UI = {
+//   chart: {}
+// }
+
+
+  // validate(model) {
+  //   model = this.model || model;
+
+  //   this._super(model);
+
+  //   //validate on first model set only
+  //   if (!this.model) {
+  //     const entities_geodomain = model.state.entities_geodomain;
+  //     entities_geodomain.skipFilter = (model.state.entities.dim === entities_geodomain.dim || model.state.entities_side.dim === entities_geodomain.dim) && 
+  //       (Boolean(model.state.entities.getFilteredEntities().length) || !model.state.entities_side.skipFilter);
+  //   }
+  // }
+
+PopByAge.default_model = {
+  state: {
   },
-
-  validate(model) {
-    model = this.model || model;
-
-    this._super(model);
-
-    //validate on first model set only
-    if (!this.model) {
-      const entities_geodomain = model.state.entities_geodomain;
-      entities_geodomain.skipFilter = (model.state.entities.dim === entities_geodomain.dim || model.state.entities_side.dim === entities_geodomain.dim) && 
-        (Boolean(model.state.entities.getFilteredEntities().length) || !model.state.entities_side.skipFilter);
-    }
-  },
-
-  default_model: {
-    state: {
+  ui: {
+    chart: {
+      mode: "smallMultiples",
+      stacked: true,
+      inpercent: false,
+      flipSides: true,
+      lockActive: true,
+      lockNonSelected: 0
     },
-    ui: {
-      chart: {
-        mode: "smallMultiples",
-        stacked: true,
-        inpercent: false,
-        flipSides: true,
-        lockActive: true,
-        lockNonSelected: 0
-      },
-      "buttons": ["colors", "find", "lock", /*"side",*/ "inpercent", "moreoptions", "sidebarcollapse", "fullscreen"],
-      "dialogs": {
-        "popup": ["timedisplay", "colors", "find", /*"side",*/ "moreoptions"],
-        "sidebar": ["timedisplay", "colors", "find", "grouping"],
-        "moreoptions": ["opacity", "speed", "grouping", "colors", /*"side",*/ "presentation", "about"],
-        "dialog": {"find": {
-          "panelMode": "show", 
-          enablePicker: false
-        } }
-      },
-      presentation: false
+    "buttons": ["colors", "find", "lock", /*"side",*/ "inpercent", "moreoptions", "sidebarcollapse", "fullscreen"],
+    "dialogs": {
+      "popup": ["timedisplay", "colors", "find", /*"side",*/ "moreoptions"],
+      "sidebar": ["timedisplay", "colors", "find", "grouping"],
+      "moreoptions": ["opacity", "speed", "grouping", "colors", /*"side",*/ "presentation", "about"],
+      "dialog": {"find": {
+        "panelMode": "show", 
+        enablePicker: false
+      } }
     },
-    locale: { }
+    presentation: false
   },
+  locale: { }
+}
 
-  versionInfo: VERSION_INFO
-});
-
-export default PopByAge;
+PopByAge.versionInfo = VERSION_INFO
