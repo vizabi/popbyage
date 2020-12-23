@@ -127,6 +127,7 @@ export default class VizabiPopByAge extends BaseComponent {
     this.state = {};
 
     this.DOM = {
+      svg: this.element.select(".vzb-popbyage-svg"),
       graph: this.element.selectAll(".vzb-bc-graph"),
       xTitleEl: this.element.select(".vzb-bc-axis-x-title"),
       xInfoEl: this.element.select(".vzb-bc-axis-x-info"),
@@ -253,6 +254,7 @@ export default class VizabiPopByAge extends BaseComponent {
     this.addReaction(this._updateSideTitles);
     this.addReaction(this._updateForecastOverlay);
     this.addReaction(this.drawData);
+    this.addReaction(this._highlightBars);
 
 
   }
@@ -548,18 +550,21 @@ export default class VizabiPopByAge extends BaseComponent {
 
   _updateSideTitles() {
     const _this = this;
-    const sideItems = this.MDL.label.data.response
+    const sideItems = this.sideItems = this.MDL.label.data.response
       .filter(row => row.dim == this.SIDEDIM)
-      .map(row => ({
-        [row.data[this.SIDEDIM]]: row.data.name
-      }))
+      .flatMap(row => row.data)
+      .reduce((result, row) => {
+        result[row[this.SIDEDIM]] = row.name;
+        return result;
+      }, {});
 
-    const stackItems = this.MDL.label.data.response
+    const stackItems = this.stackItems = this.MDL.label.data.response
       .filter(row => row.dim == this.STACKDIM)
-      .map(row => ({
-        [row.data[this.STACKDIM]]: row.data.name
-      }))
-
+      .flatMap(row => row.data)
+      .reduce((result, row) => {
+        result[row[this.STACKDIM]] = row.name;
+        return result;
+      }, {});
     
     this.DOM.titleRight.classed("vzb-hidden", !this.twoSided);
     if (this.twoSided) {
@@ -585,20 +590,20 @@ export default class VizabiPopByAge extends BaseComponent {
     return {
       mouseover(d, i) {
         if (utils.isTouchDevice()) return;
-        _this.model.marker.highlightMarker(d);
+        _this.MDL.highlighted.data.filter.set(d);
         _this._showLabel(d);
       },
       mouseout(d, i) {
         if (utils.isTouchDevice()) return;
-        _this.model.marker.clearHighlighted();
+        _this.MDL.highlighted.data.filter.delete(d);
       },
       click(d, i) {
         if (utils.isTouchDevice()) return;
-        _this.model.marker.selectMarker(d);
+        _this.MDL.selected.data.filter.toggle(d);
       },
       tap(d) {
         d3.event.stopPropagation();
-        _this.model.marker.selectMarker(d);
+        _this.MDL.selected.data.filter.set(d);
       }
     };
   }
@@ -629,7 +634,7 @@ export default class VizabiPopByAge extends BaseComponent {
       this.total = this._updateTotal(time.value);
     }
 
-    const domain = this.yScale.domain();
+    const domain = d3.extent(this.yScale.domain());
 
     //this.model.age.setVisible(markers);
 
@@ -739,7 +744,7 @@ export default class VizabiPopByAge extends BaseComponent {
       const s = {};
       s[geoDomainDimension] = geoDomainDefaultValue;
       s[ageDim] = d[ageDim];
-      s[shiftedAgeDim] =
+      s[shiftedAgeDim] = d[shiftedAgeDim];
       s[sideDim] = d[sideDim];
       s[stackDim] = m;
       s[prefixedSideDim] = d[prefixedSideDim];
@@ -760,18 +765,22 @@ export default class VizabiPopByAge extends BaseComponent {
       .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
       .attr("y", 0)
       .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
-      .attr("fill", d => _this.cScale(_this.frame[d[SYMBOL_KEY]] || d[prefixedStackDim]))
+      .attr("fill", d => {
+        return _this.cScale(_this.frame[d[SYMBOL_KEY]] && _this.frame[d[SYMBOL_KEY]].color || d[prefixedStackDim])
+      })
       //.attr("width", _attributeUpdaters._newWidth)
       .attr("x", _attributeUpdaters._newX)
-      //.on("mouseover", _this.interaction.mouseover)
-      //.on("mouseout", _this.interaction.mouseout)
-      //.on("click", _this.interaction.click)
-      //.onTap(_this.interaction.tap)
+      .on("mouseover", _this.interaction.mouseover)
+      .on("mouseout", _this.interaction.mouseout)
+      .on("click", _this.interaction.click)
+      .onTap(_this.interaction.tap)
       .merge(stackBars);
 
     if (reorder) stackBars
       .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
-      .attr("fill", d => _this.cScale(_this.frame[d[SYMBOL_KEY]] || d[prefixedStackDim]))
+      .attr("fill", d => {
+        return _this.cScale(_this.frame[d[SYMBOL_KEY]] && _this.frame[d[SYMBOL_KEY]].color || d[prefixedStackDim])
+      })
       .order();
 
     const stepShift = (ageData[0][shiftedAgeDim] - ageData[0][ageDim]) - this.shiftScale(time.value) * groupBy;
@@ -1264,7 +1273,7 @@ export default class VizabiPopByAge extends BaseComponent {
     //apply scales to axes and redraw
     this.yScale.range([this.height, 0]);
 
-    const yScaleCopy = this.yScale.copy();
+    const yScaleCopy = this.yScale.copy().domain(domain);
     if (groupBy > 2) {
       yScaleCopy.ticks = () => d3.range(domain[0], domain[1] + 1, groupBy);
     }
@@ -1281,7 +1290,7 @@ export default class VizabiPopByAge extends BaseComponent {
           limitMaxTickNumber: 19,
           fitIntoScale: "optimistic",
           isPivotAuto: false,
-          formatter: this.localise
+          formatter: _this.localise
         });
       
       d3.select(this).attr("transform", "translate(" + 0 + ",0)")
@@ -1310,7 +1319,7 @@ export default class VizabiPopByAge extends BaseComponent {
           scaleType: x.scale.type,
           toolMargin: margin,
           limitMaxTickNumber: 6,
-          formatter: this.localise
+          formatter: _this.localise
         });
 
       d3.select(this)
@@ -1419,6 +1428,57 @@ export default class VizabiPopByAge extends BaseComponent {
 
   }
 
+  _showLabel(d) {
+    const _this = this;
+    const formatter = _this.ui.inpercent ? d3.format(".1%") : _this.localise;
+    const sideDim = _this.SIDEDIM;
+    const ageDim = _this.AGEDIM;
+    const stackDim = _this.STACKDIM;
+    const shiftedAgeDim = "s_age";
+    const left = _this.sideKeys.indexOf(d[sideDim]) > 0;
+
+    let deltaX = 7;
+    if (!this.smallMultiples) {
+      const hoverBarEl = d3.select(d3.event.target);
+      deltaX += +hoverBarEl.attr("x");
+    }
+
+    const labelNode = _this.DOM.labels.select(".vzb-bc-label-" + d[shiftedAgeDim]).nodes()[d.i];// + "-" + _this._id);
+    const labelEl = d3.select(labelNode);
+    labelEl.selectAll(".vzb-bc-age")
+      .text(textData => {
+        //var total = _this.ui.chart.inpercent ? _this.totalValues[d[sideDim]] : 1;
+        let text = _this.stackKeys.length > 1 ? _this.stackItems[d[stackDim]] : textData.text;
+        text = _this.twoSided ? text : textData.text + " " + _this.stackItems[d[stackDim]];
+        const value = _this.xScale.invert(d["width_"]);
+        return text + ": " + formatter(value);
+      })
+      .attr("x", left ? -this.profileConstants.centerWidth - deltaX : deltaX)
+      .attr("dx", 0)
+      .classed("vzb-text-left", left);
+    labelEl.classed("vzb-prehovered", true);      
+    const bbox = labelNode.getBBox();
+    const transform = _this.DOM.svg.node().getScreenCTM().inverse().multiply(labelNode.getScreenCTM());
+    const overDrawLeft = Math.max(-bbox.x - transform.e, 0);
+    const overDrawRight = Math.min(_this.fullWidth - bbox.x - bbox.width - transform.e, 0);
+    labelEl.selectAll(".vzb-bc-age").attr("dx", overDrawLeft + overDrawRight);
+    labelEl.classed("vzb-prehovered", false);
+    labelEl.classed("vzb-hovered", true);
+  }
+
+  _highlightBars() {
+    const _this = this;
+
+    _this.someHighlighted = this.MDL.highlighted.data.filter.any();
+
+    _this.updateBarsOpacity();
+
+    if (!_this.someHighlighted) {
+      //hide labels
+      _this.DOM.labels.selectAll(".vzb-hovered").classed("vzb-hovered", false);
+    }
+  }
+
   updateBarsOpacity(duration) {
     const _this = this;
 
@@ -1464,7 +1524,6 @@ export default class VizabiPopByAge extends BaseComponent {
   }
 
 }
-
 
 // const {
 //   utils,
@@ -3197,4 +3256,10 @@ const _PopByAge = {
     this.nonSelectedOpacityZero = _this.model.marker.opacitySelectDim < 0.01;
   }
 
+}
+
+VizabiPopByAge.DEFAULT_UI = {
+  opacityHighlightDim: 0.1,
+  opacitySelectDim: 0.3,
+  opacityRegular: 1,
 }

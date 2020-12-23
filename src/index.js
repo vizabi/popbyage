@@ -109,6 +109,18 @@ export default class PopByAge extends BaseComponent {
   //       (Boolean(model.state.entities.getFilteredEntities().length) || !model.state.entities_side.skipFilter);
   //   }
   // }
+PopByAge.DEFAULT_UI = {
+  chart: {
+    opacityHighlightDim: 0.1,
+    opacitySelectDim: 0.3,
+    opacityRegular: 1,
+    stacked: true,
+    inpercent: false,
+    flipSides: true,
+    lockActive: true,
+    lockNonSelected: 0
+  },
+}
 
 PopByAge.default_model = {
   state: {
@@ -127,10 +139,7 @@ PopByAge.default_model = {
       "popup": ["timedisplay", "colors", "find", /*"side",*/ "moreoptions"],
       "sidebar": ["timedisplay", "colors", "find", "grouping"],
       "moreoptions": ["opacity", "speed", "grouping", "colors", /*"side",*/ "presentation", "about"],
-      "dialog": {"find": {
-        "panelMode": "show", 
-        enablePicker: false
-      } }
+      "dialog": {"find": {"panelMode": "show"}}
     },
     presentation: false
   },
