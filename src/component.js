@@ -67,6 +67,7 @@ const PROFILE_CONSTANTS_FOR_PROJECTOR = {
 }
 
 const SYMBOL_KEY = Symbol.for("key");
+const SYMBOL_KEY2 = Symbol.for("key2");
 const SYMBOL_STACKEDSUM = Symbol.for("stackedSum");
 
 //
@@ -172,7 +173,7 @@ class _VizabiPopByAge extends BaseComponent {
         // } else {
         //   width = _this.frameAxisX[`${d[_this.PREFIXEDSTACKDIM]},${d[_this.PREFIXEDSIDEDIM]},${d[_this.AGEDIM] + _this.ageShift}`];
         // }
-        width = _this.frame[d[SYMBOL_KEY]] && _this.frame[d[SYMBOL_KEY]].x;
+        width = _this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].x;
         d["width_"] = width ? _this.xScale(width) : 0;
         if (_this.ui.inpercent) {
           d["width_"] /= _this.total[d.i][d[_this.PREFIXEDSIDEDIM]];
@@ -781,6 +782,11 @@ class _VizabiPopByAge extends BaseComponent {
       s["x_"] = 0;
       s["width_"] = 0;
       s[SYMBOL_KEY] = keyFn({
+        [ageDim]: d[ageDim],
+        [sideDim]: d[prefixedSideDim],
+        [stackDim]: m,
+      })
+      s[SYMBOL_KEY2] = keyFn({
         [ageDim]: d[shiftedAgeDim],
         [sideDim]: d[prefixedSideDim],
         [stackDim]: m,
