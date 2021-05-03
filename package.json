@@ -14,7 +14,7 @@
     "cross-env": "^5.0.0",
     "css.escape": "^1.5.1",
     "vizabi-shared-components": "github:vizabi/vizabi-shared-components",
-    "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler"
+    "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler#rollup_v2"
   },
   "name": "vizabi-popbyage",
   "version": "3.0.1",

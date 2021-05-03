@@ -2,16 +2,15 @@ import "./styles.scss";
 import { 
   BaseComponent,
   TimeSlider,
-  DataWarning,
   DataNotes,
   LocaleService,
   LayoutService,
   TreeMenu,
   SteppedSlider,
   Dialogs,
-  ButtonList 
+  ButtonList
 } from "VizabiSharedComponents";
-import VizabiPopByAge from "./component";
+import { VizabiPopByAge } from "./component";
 import { observable } from "mobx";
 
 const VERSION_INFO = { version: __VERSION, build: __BUILD };
@@ -19,7 +18,7 @@ const VERSION_INFO = { version: __VERSION, build: __BUILD };
 export default class PopByAge extends BaseComponent {
 
   constructor(config){
-    const marker = config.model.stores.markers.get("popbyage");
+    const marker = config.model.markers.popbyage;
 
     config.name = "popbyage";
 
@@ -43,10 +42,6 @@ export default class PopByAge extends BaseComponent {
       placeholder: ".vzb-treemenu",
       model: marker,
       name: "tree-menu"
-    },{
-      type: DataWarning,
-      placeholder: ".vzb-datawarning",
-      model: marker
     },{
       type: DataNotes,
       placeholder: ".vzb-datanotes",
@@ -74,7 +69,6 @@ export default class PopByAge extends BaseComponent {
         <div class="vzb-buttonlist"></div>
       </div>
       <div class="vzb-treemenu"></div>
-      <div class="vzb-datawarning"></div>
       <div class="vzb-datanotes"></div>
     `;
   

@@ -1,1 +1,1 @@
-module.exports = require("vizabi-tool-bundler").bind(null, "PopByAge", "popbyage", __dirname);
+module.exports = require("vizabi-tool-bundler").bind(null, "PopByAge", "popbyage", __dirname, require("./package.json"));
