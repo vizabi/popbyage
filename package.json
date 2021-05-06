@@ -1,33 +1,51 @@
 {
-  "main": "build/popbyage.js",
+  "name": "vizabi-popbyage",
+  "version": "3.0.2",
+  "description": "Vizabi bubble map",
   "scripts": {
+    "prepublishOnly": "npm run build",
     "link": "npm link ../vizabi-shared-components",
     "start": "rollup -c",
     "build": "cross-env NODE_ENV=production rollup -c",
-    "deploy": "tool-deploy",
-    "postinstall": "npm run link"
+    "deploy": "tool-deploy"
   },
+  "main": "build/popbyage.js",
   "files": [
     "build"
   ],
-  "devDependencies": {
-    "cross-env": "^5.0.0",
-    "css.escape": "^1.5.1",
-    "vizabi-shared-components": "github:vizabi/vizabi-shared-components",
-    "vizabi-tool-bundler": "github:vizabi/vizabi-tool-bundler#rollup_v2"
-  },
-  "name": "vizabi-popbyage",
-  "version": "3.0.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vizabi/vizabi-popbyage.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "Gapminder Foundation",
+    "url": "https://www.gapminder.org",
+    "email": "info@gapminder.org"
+  },
+  "contributors": [
+    {
+      "name": "Angie",
+      "url": "https://github.com/angieskazka"
+    },
+    {
+      "name": "Jasper",
+      "url": "https://github.com/jheeffer"
+    },
+    {
+      "name": "Dima",
+      "url": "https://github.com/dab2000"
+    }
+  ],
+  "license": "CC-BY-4.0",
   "bugs": {
     "url": "https://github.com/vizabi/vizabi-popbyage/issues"
   },
   "homepage": "https://github.com/vizabi/vizabi-popbyage#readme",
-  "description": "Gapminder's population by age data visualisation tool. See it in action on gapminder.org/tools"
+  "devDependencies": {
+    "cross-env": "^5.0.0",
+    "css.escape": "^1.5.1",
+    "vizabi-shared-components": "../vizabi-shared-components",
+    "vizabi-tool-bundler": "1.1.1"
+  }
 }
