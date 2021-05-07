@@ -8,7 +8,9 @@ import {
   TreeMenu,
   SteppedSlider,
   Dialogs,
-  ButtonList
+  ButtonList,
+  CapitalVizabiService,
+  versionInfo
 } from "VizabiSharedComponents";
 import { VizabiPopByAge } from "./component";
 import { observable } from "mobx";
@@ -73,6 +75,7 @@ export default class PopByAge extends BaseComponent {
     `;
   
     config.services = {
+      Vizabi: new CapitalVizabiService({Vizabi: config.Vizabi}),
       locale: new LocaleService(config.locale),
       layout: new LayoutService({placeholder: config.placeholder})
     };
@@ -140,4 +143,4 @@ PopByAge.default_model = {
   locale: { }
 }
 
-PopByAge.versionInfo = VERSION_INFO
+PopByAge.versionInfo = { version: __VERSION, build: __BUILD, package: __PACKAGE_JSON_FIELDS, sharedComponents: versionInfo};

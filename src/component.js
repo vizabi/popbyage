@@ -121,6 +121,14 @@ class _VizabiPopByAge extends BaseComponent {
             <rect class="vzb-tooltip-border"></rect>
             <text class="vzb-tooltip-text"></text>
         </g>
+        <rect class="vzb-bc-forecastoverlay vzb-hidden" x="0" y="0" width="100%" height="100%" fill="url(#vzb-bc-pattern-lines)" pointer-events='none'></rect>
+      </svg>
+      <svg>
+        <defs>
+            <pattern id="vzb-bc-pattern-lines" x="0" y="0" patternUnits="userSpaceOnUse" width="50" height="50" viewBox="0 0 10 10"> 
+                <path d='M-1,1 l2,-2M0,10 l10,-10M9,11 l2,-2' stroke='black' stroke-width='3' opacity='0.08'/>
+            </pattern> 
+        </defs>
       </svg>
     `;
     super(config);
@@ -374,6 +382,7 @@ class _VizabiPopByAge extends BaseComponent {
         new DOMParser().parseFromString(_this.graphTemplate, 'application/xml').documentElement, true);
     });
 
+    this.element.select(".vzb-bc-forecastoverlay").raise();
     this.element.select(".vzb-bc-tooltip").raise();
     this.__updateGraphDOM(this.DOM.graph = this.element.selectAll(".vzb-bc-graph"));
   }
@@ -571,10 +580,10 @@ class _VizabiPopByAge extends BaseComponent {
 
   _updateForecastOverlay() {
     this.DOM.forecastOverlay.classed("vzb-hidden", 
-      !this.MDL.frame.config.endBeforeForecast || 
-      !this.ui.showForecastOverlay || 
-      //TODO date parsing here is a hack because of https://github.com/vizabi/vizabi-reactive/issues/37
-      (this.MDL.frame.value <= new Date(this.MDL.frame.config.endBeforeForecast))
+    !this.ui.showForecast || 
+    !this.ui.showForecastOverlay || 
+    !this.ui.endBeforeForecast || 
+      (this.MDL.frame.value <= this.MDL.frame.parseValue(this.ui.endBeforeForecast))
     );
   }
 
@@ -620,7 +629,7 @@ class _VizabiPopByAge extends BaseComponent {
     return {
       mouseover(d, i) {
         if (utils.isTouchDevice()) return;
-        _this.MDL.highlighted.data.filter.set(d);
+        _this.MDL.highlighted.data.filter.set(d, JSON.stringify({color: d[_this.STACKDIM]}));
         _this._showLabel(d);
       },
       mouseout(d, i) {
@@ -636,11 +645,6 @@ class _VizabiPopByAge extends BaseComponent {
         _this.MDL.selected.data.filter.set(d);
       }
     };
-  }
-
-  _generateShiftedKeys() {
-    const shiftedKeys = {};
-
   }
 
   /**
@@ -717,143 +721,143 @@ class _VizabiPopByAge extends BaseComponent {
     //     return r;
     //   });
     // }
+    const transition = duration ? d3.transition()
+      .duration(duration)
+      .ease(d3.easeLinear) 
+      : null;
+
+    const oneBarHeight = this.oneBarHeight;
+    const barHeight = this.barHeight;
+    const firstBarOffsetY = this.firstBarOffsetY;
+
+    const stepShift = (ageData[0][shiftedAgeDim] - ageData[0][ageDim]) - this.shiftScale(time.value) * groupBy;
 
     this.barsData = [];
-    let ageBars = this.DOM.bars.selectAll(".vzb-bc-bar")
+
+    this.ageBars = this.DOM.bars.selectAll(".vzb-bc-bar")
       .data((d, i) => (_this.barsData[i] = ageData.map(m => {
         const p = {};
         p[ageDim] = m[ageDim];
         p[shiftedAgeDim] = m[shiftedAgeDim];    
         p.i = i;
         return p;
-      }), this.barsData[i]), d => d[ageDim]);
-    //exit selection
-    ageBars.exit().remove();
+      }), this.barsData[i]), d => d[ageDim])
+      .join(
+        enter => enter.append("g")
+          .attr("class", d => "vzb-bc-bar " + "vzb-bc-bar-" + d[ageDim])
+          .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - groupBy) * oneBarHeight) + ")"),
+        update => update,
+        exit => exit.remove()
+      ).call(ageBars => {
+        if (duration) {
+          ageBars.transition(transition)
+            .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
+        } else {
+          ageBars.interrupt()
+            .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");  
+        }
+      });
 
-    const oneBarHeight = this.oneBarHeight;
-    const barHeight = this.barHeight;
-    const firstBarOffsetY = this.firstBarOffsetY;
-
-    //enter selection -- init bars
-    ageBars = ageBars.enter().append("g")
-      .attr("class", d => "vzb-bc-bar " + "vzb-bc-bar-" + d[ageDim])
-      .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - groupBy) * oneBarHeight) + ")")
-      .merge(ageBars);
-
-    // this.ageBars.attr("class", function(d) {
-    //     return "vzb-bc-bar " + "vzb-bc-bar-" + d[ageDim];
-    //   })
-
-
-    let sideBars = ageBars.selectAll(".vzb-bc-side").data((d, i) => (d.side = _this.sideKeys.map(m => {
-      const r = {};
-      r[ageDim] = d[ageDim];
-      r[shiftedAgeDim] = d[shiftedAgeDim];
-      r[prefixedSideDim] = m;
-      r[sideDim] = m;
-      r.i = d.i;
-      return r;
-    }), d.side), d => d[prefixedSideDim]);
-
-    sideBars.exit().remove();
-    sideBars = sideBars.enter().append("g")
-      .attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
-      .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "")
-      .merge(sideBars);
-
-    if (reorder) {
-      sideBars
-        .attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
-        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
-    }
+    this.sideBars = this.ageBars.selectAll(".vzb-bc-side")
+      .data((d, i) => (d.side = _this.sideKeys.map(m => {
+        const r = {};
+        r[ageDim] = d[ageDim];
+        r[shiftedAgeDim] = d[shiftedAgeDim];
+        r[prefixedSideDim] = m;
+        r[sideDim] = m;
+        r.i = d.i;
+        return r;
+      }), d.side), d => d[prefixedSideDim])
+      .join(
+        enter => enter.append("g")
+          .attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
+          .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : ""),
+        update => update,
+        exit => exit.remove()
+      )
+      .call(sideBars => {
+        if (reorder) {
+          sideBars.attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
+            .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");  
+        }  
+      });
 
     const _attributeUpdaters = this._attributeUpdaters;
     const keyFn = this.model.dataMap.keyFn;
 
-    let stackBars = sideBars.selectAll(".vzb-bc-stack").data(d => ( d.stack = (_this.smallMultiples ? [stacks[d.i]] : stacks).map(m => {
-      const s = {};
-      s[geoDomainDimension] = geoDomainDefaultValue;
-      s[ageDim] = d[ageDim];
-      s[shiftedAgeDim] = d[shiftedAgeDim];
-      s[sideDim] = d[sideDim];
-      s[stackDim] = m;
-      s[prefixedSideDim] = d[prefixedSideDim];
-      s[prefixedStackDim] = m;
-      s["x_"] = 0;
-      s["width_"] = 0;
-      s[SYMBOL_KEY] = keyFn({
-        [ageDim]: d[ageDim],
-        [sideDim]: d[prefixedSideDim],
-        [stackDim]: m,
-      })
-      s[SYMBOL_KEY2] = keyFn({
-        [ageDim]: d[shiftedAgeDim],
-        [sideDim]: d[prefixedSideDim],
-        [stackDim]: m,
-      })
-      s.i = d.i;
-      return s;
-    }), d.stack), d => d[prefixedStackDim]);
+    this.stackBars = this.sideBars.selectAll(".vzb-bc-stack")
+      .data(d => ( d.stack = (_this.smallMultiples ? [stacks[d.i]] : stacks).map(m => {
+        const s = {};
+        s[geoDomainDimension] = geoDomainDefaultValue;
+        s[ageDim] = d[ageDim];
+        s[shiftedAgeDim] = d[shiftedAgeDim];
+        s[sideDim] = d[sideDim];
+        s[stackDim] = m;
+        s[prefixedSideDim] = d[prefixedSideDim];
+        s[prefixedStackDim] = m;
+        s["x_"] = 0;
+        s["width_"] = 0;
+        s[SYMBOL_KEY] = keyFn({
+          [ageDim]: d[ageDim],
+          [sideDim]: d[prefixedSideDim],
+          [stackDim]: m,
+        })
+        s[SYMBOL_KEY2] = keyFn({
+          [ageDim]: d[shiftedAgeDim],
+          [sideDim]: d[prefixedSideDim],
+          [stackDim]: m,
+        })
+        s.i = d.i;
+        return s;
+      }), d.stack), d => d[prefixedStackDim])
+      .join(
+        enter => enter.append("rect")
+          .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
+          .attr("y", 0)
+          .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
+          .attr("fill", d => {
+            return _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[prefixedStackDim])
+          })
+          //.attr("width", _attributeUpdaters._newWidth)
+          .attr("x", _attributeUpdaters._newX)
+          .on("mouseover", _this.interaction.mouseover)
+          .on("mouseout", _this.interaction.mouseout)
+          .on("click", _this.interaction.click)
+          .onTap(_this.interaction.tap),
+        update => update,
+        exit => exit.remove()
+      )
+      .call(stackBars => {
+        if (reorder) stackBars
+        .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
+        .attr("fill", d => {
+          return _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[prefixedStackDim])
+        })
+        .order();
 
-    stackBars.exit().remove();
-    stackBars = stackBars.enter().append("rect")
-      .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
-      .attr("y", 0)
-      .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
-      .attr("fill", d => {
-        return _this.cScale(_this.frame[d[SYMBOL_KEY]] && _this.frame[d[SYMBOL_KEY]].color || d[prefixedStackDim])
-      })
-      //.attr("width", _attributeUpdaters._newWidth)
-      .attr("x", _attributeUpdaters._newX)
-      .on("mouseover", _this.interaction.mouseover)
-      .on("mouseout", _this.interaction.mouseout)
-      .on("click", _this.interaction.click)
-      .onTap(_this.interaction.tap)
-      .merge(stackBars);
-
-    if (reorder) stackBars
-      .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
-      .attr("fill", d => {
-        return _this.cScale(_this.frame[d[SYMBOL_KEY]] && _this.frame[d[SYMBOL_KEY]].color || d[prefixedStackDim])
-      })
-      .order();
-
-    const stepShift = (ageData[0][shiftedAgeDim] - ageData[0][ageDim]) - this.shiftScale(time.value) * groupBy;
-
-    if (duration) {
-      const transition = d3.transition()
-        .duration(duration)
-        .ease(d3.easeLinear);
-
-      ageBars
-        .transition(transition)
-        .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
-      stackBars
-        .transition(transition)
-        .attr("width", _attributeUpdaters._newWidth)
-        .attr("x", _attributeUpdaters._newX);
-    } else {
-      ageBars.interrupt()
-        .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
-      stackBars.interrupt()
-        .attr("width", _attributeUpdaters._newWidth)
-        .attr("x", _attributeUpdaters._newX);
-    }
-
-    this.ageBars = ageBars;
-    this.sideBars = sideBars;
-    this.stackBars = stackBars;
+        if (duration) {
+          stackBars
+            .transition(transition)
+            .attr("width", _attributeUpdaters._newWidth)
+            .attr("x", _attributeUpdaters._newX);
+        } else {
+          stackBars.interrupt()
+            .attr("width", _attributeUpdaters._newWidth)
+            .attr("x", _attributeUpdaters._newX);
+        }
+      
+      });
 
     this.entityLabels = this.DOM.labels.selectAll(".vzb-bc-label text")
-      .data(markers);
-    //exit selection
-    this.entityLabels.exit().remove();
-
-    this.entityLabels = this.entityLabels.enter().append("g")
+      .data(markers)
+      .join(
+        enter => enter.append("g")
       .attr("class", d => "vzb-bc-label" + " vzb-bc-label-" + d[shiftedAgeDim])
       .append("text")
-      .attr("class", "vzb-bc-age")
-      .merge(this.entityLabels)
+      .attr("class", "vzb-bc-age"),
+        update => update,
+        exit => exit.remove()
+      )
       .each((d, i) => {
         const yearOlds = _this.localise("popbyage/yearOlds");
 
@@ -1100,6 +1104,88 @@ class _VizabiPopByAge extends BaseComponent {
       total[side] = totals[timeSteps[nextStep]][side] * fraction + totals[timeSteps[nextStep - 1]][side] * (1 - fraction);
   });
     return total;
+  }
+
+  _redrawLocked() {
+    const _this = this;
+    if (!this.lock) return;
+    if (this.lockFrame) {
+      this._makeOutlines(this.lockFrame.axis_x, this.lockTotal);
+    } else {
+      const lockTime = this.model.time.parse("" + this.lock);
+
+      this.model.marker.getFrame(lockTime, lockFrame => {
+        if (!lockFrame) return;
+        _this.lockedPaths.text("");
+        this.lockFrame = {
+          axis_x: lockFrame.axis_x
+        };
+        this.lockTotal = this._updateTotal(lockTime);
+        this._makeOutlines(lockFrame.axis_x, this.lockTotal);
+      });
+    }
+  }
+
+  _makeOutlines(frame, total) {
+    const _this = this;
+
+    const KEYS = utils.unique(this.model.marker._getAllDimensions({ exceptType: "time" }))
+    KEYS.forEach((key, i) => {
+        if (key === _this.AGEDIM) KEYS[i] = _this.SHIFTEDAGEDIM;
+        //if (_this.geoLess)
+      });
+
+    const groupBy = this.groupBy;
+    const barHeight = this.barHeight;
+    const firstBarOffsetY = this.firstBarOffsetY + barHeight;
+
+    const line = d3.line().curve(d3.curveStepBefore)
+      .x(d => d.x)//_ + d.width_)
+      .y((d, i) => firstBarOffsetY - barHeight * i  - (groupBy > 2 ? 1 : 0));
+
+    
+    const pathsData = this.barsData.map((barsData, _i) => {
+      const stackIndex = [0, 0];
+
+      return this.sideKeys.map((s, i) => {
+        if (_this.stackSkip) {
+          barsData[0].side[i].stack.forEach((d, j) => {
+            if (d[_this.PREFIXEDSIDEDIM] === d[_this.PREFIXEDSTACKDIM]) {
+              stackIndex[i] = j;
+            }
+          });
+        }
+        const data = {};
+        data.d = barsData.map(age => {
+          const r = {};
+          const x = frame[utils.getKey(age.side[i].stack[stackIndex[i]], KEYS)];
+          r.x = x ? _this.xScale(x) : 0;
+            if (_this.ui.chart.inpercent) {
+              r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
+            }
+          return r;
+        });
+        return data;
+      });
+    });
+
+    const data = this.bars.selectAll(".vzb-bc-side-left").selectAll(".vzb-bc-stack-0").data();
+    const color = _this.cScale(data[0][this.PREFIXEDSTACKDIM])
+    const colorShade = this.model.marker.color.getColorShade({
+      colorID: _this.frameColor[data[0][this.PREFIXEDSTACKDIM]] || data[0][this.PREFIXEDSTACKDIM],
+      shadeID: "shade"
+    }) || "#000";//d3.hsl(color).darker(2);
+
+    this.lockedPaths.each(function(d, _i) {
+      const paths = d3.select(this).selectAll("path").data(pathsData[_i]);
+      paths.exit().remove();
+      paths.enter()
+        .append("path")
+        .merge(paths)
+        .attr("d", (d, i) => line(d.d))
+        .attr("stroke", "#000")//colorShade)
+        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.activeProfile.centerWidth + ",0)") : "");
+    });
   }
 
   updateSize() {
