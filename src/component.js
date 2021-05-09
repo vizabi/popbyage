@@ -100,7 +100,7 @@ class _VizabiPopByAge extends BaseComponent {
             <svg class="vzb-bc-bars-crop">
                 <g class="vzb-bc-bars"></g>
             </svg>
-            
+
             <svg class="vzb-bc-locked-crop">
                 <g class="vzb-bc-paths"></g>
             </svg>
@@ -125,9 +125,9 @@ class _VizabiPopByAge extends BaseComponent {
       </svg>
       <svg>
         <defs>
-            <pattern id="vzb-bc-pattern-lines" x="0" y="0" patternUnits="userSpaceOnUse" width="50" height="50" viewBox="0 0 10 10"> 
+            <pattern id="vzb-bc-pattern-lines" x="0" y="0" patternUnits="userSpaceOnUse" width="50" height="50" viewBox="0 0 10 10">
                 <path d='M-1,1 l2,-2M0,10 l10,-10M9,11 l2,-2' stroke='black' stroke-width='3' opacity='0.08'/>
-            </pattern> 
+            </pattern>
         </defs>
       </svg>
     `;
@@ -167,7 +167,7 @@ class _VizabiPopByAge extends BaseComponent {
     this._attributeUpdaters = {
       _newWidth(d, i) {
         //d["x_"] = 0;
-        let width;        
+        let width;
         // if (_this.geoLess && _this.stackSkip && _this.sideSkip) {
         //   width = _this.frameAxisX[`${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`];
         // } else if (_this.geoLess && _this.stackSkip) {
@@ -232,10 +232,10 @@ class _VizabiPopByAge extends BaseComponent {
 
   draw() {
     this.localise = this.services.locale.auto();
-  
-    this.maxLimits = {};
-    this.inpercentMaxLimits = {};
-    this.totals = {};
+
+    // this.maxLimits = {};
+    // this.inpercentMaxLimits = {};
+    // this.totals = {};
 
     this.geoDomainDimension = this.MDL.facet.data.concept;
     this.geoDomainDefaultValue = "world";//this.model.entities_geodomain.show[this.geoDomainDimension]["$in"][0];
@@ -255,6 +255,7 @@ class _VizabiPopByAge extends BaseComponent {
     this.addReaction(this._updateSideTitles);
     this.addReaction(this._updateForecastOverlay);
     this.addReaction(this.drawData);
+    this.addReaction(this._redrawLocked);
     this.addReaction(this._highlightBars);
 
 
@@ -270,7 +271,9 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   drawData() {
-    //TODO: get component ready if some submodel doesn't ready ??????    
+    this.services.layout.size;
+
+    //TODO: get component ready if some submodel doesn't ready ??????
     const _this = this;
 
     const {
@@ -282,19 +285,19 @@ class _VizabiPopByAge extends BaseComponent {
     } = this.MDL;
 
 
-    this.lock = this.ui.lockNonSelected;
+    // this.lock = this.ui.lockNonSelected;
 
-    if (this.groupBy !== 1 && this.lock && !this.lockFrame) {
-      const lockTime = this.localise("" + this.lock);
-      if (!this.timeSteps.some(time => !(lockTime - time))) {
-        this.timeSaved = this.model.time.value;
-        this.model.time.set({
-          startSelected: new Date(lockTime),
-          endSelected: new Date(lockTime)
-        }, false, false);
-        return;
-      }
-    }
+    // if (this.groupBy !== 1 && this.lock && !this.lockFrame) {
+    //   const lockTime = this.localise("" + this.lock);
+    //   if (!this.timeSteps.some(time => !(lockTime - time))) {
+    //     this.timeSaved = this.model.time.value;
+    //     this.model.time.set({
+    //       startSelected: new Date(lockTime),
+    //       endSelected: new Date(lockTime)
+    //     }, false, false);
+    //     return;
+    //   }
+    // }
 
     this.shiftScale = d3.scaleLinear()
       .domain([this.timeSteps[0], this.timeSteps[this.timeSteps.length - 1]])
@@ -319,7 +322,7 @@ class _VizabiPopByAge extends BaseComponent {
     //todo
     //this.model.ui.lockUnavailable = !(this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples), false, false);
     // this.model.marker.getFrame(_this.model.time.value, (frame, time) => {
-    
+
     const time = frame.value;
 
     this.frame = this._processData(this.model.dataArray);
@@ -337,21 +340,21 @@ class _VizabiPopByAge extends BaseComponent {
       //   _this._updateLimits2(limitsDf);
       // }
 
-      if (_this.timeSaved) {
-        if (_this.timeSaved - _this.model.time.value !== 0) {
-          _this.lockFrame = {
-            axis_x: _this.frameAxisX
-          };
-          _this.lockTotal = _this._updateTotal(_this.model.time.value);
-          const timeSaved = _this.timeSaved;
-          _this.timeSaved = null;
-          _this.model.time.set({
-            startSelected: new Date(timeSaved),
-            endSelected: new Date(timeSaved)
-          }, false, false);
-        }
-        return;
-      }
+      // // if (_this.timeSaved) {
+      // //   if (_this.timeSaved - _this.model.time.value !== 0) {
+      // //     _this.lockFrame = {
+      // //       axis_x: _this.frameAxisX
+      // //     };
+      // //     _this.lockTotal = _this._updateTotal(_this.model.time.value);
+      // //     const timeSaved = _this.timeSaved;
+      // //     _this.timeSaved = null;
+      // //     _this.model.time.set({
+      // //       startSelected: new Date(timeSaved),
+      // //       endSelected: new Date(timeSaved)
+      // //     }, false, false);
+      // //   }
+      // //   return;
+      // // }
 
       //_this._getLimits();
 
@@ -426,7 +429,7 @@ class _VizabiPopByAge extends BaseComponent {
 
   _getData(name) {
     return this.state.facet ? this.MDL.facet[name][this.state.facet.index] : this.model[name];
-  } 
+  }
 
   checkDimensions() {
     const {
@@ -460,9 +463,9 @@ class _VizabiPopByAge extends BaseComponent {
     const xTitle = this.DOM.xTitleEl.select("text").text(_this.localise("popbyage/title"));
 
     const conceptPropsX = this.MDL.x.data.conceptProps;
-    
+
     const dataNotes = this.root.findChild({type: "DataNotes"});
-    
+
     utils.setIcon(this.DOM.xInfoEl, ICON_QUESTION)
       .select("svg").attr("width", "0px").attr("height", "0px")
       .style('opacity', Number(Boolean(conceptPropsX.description || conceptPropsX.sourceLink)));
@@ -547,7 +550,7 @@ class _VizabiPopByAge extends BaseComponent {
     // //   }
     // // }
     if (!this.sideKeys.length) this.sideKeys = ["undefined"];
-    
+
     // // const stacks = this.model.marker.getKeys(stackDim);
     // // const stackKeys = stacks.map(m => m[stackDim]);
 
@@ -579,10 +582,10 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   _updateForecastOverlay() {
-    this.DOM.forecastOverlay.classed("vzb-hidden", 
-    !this.ui.showForecast || 
-    !this.ui.showForecastOverlay || 
-    !this.ui.endBeforeForecast || 
+    this.DOM.forecastOverlay.classed("vzb-hidden",
+    !this.ui.showForecast ||
+    !this.ui.showForecastOverlay ||
+    !this.ui.endBeforeForecast ||
       (this.MDL.frame.value <= this.MDL.frame.parseValue(this.ui.endBeforeForecast))
     );
   }
@@ -604,7 +607,7 @@ class _VizabiPopByAge extends BaseComponent {
         result[row[this.STACKDIM]] = row.name;
         return result;
       }, {});
-    
+
     this.DOM.titleRight.classed("vzb-hidden", !this.twoSided);
     if (this.twoSided) {
       this.DOM.title.text(sideItems[this.sideKeys[1]]).call(this._textEllipsis.clear);
@@ -723,7 +726,7 @@ class _VizabiPopByAge extends BaseComponent {
     // }
     const transition = duration ? d3.transition()
       .duration(duration)
-      .ease(d3.easeLinear) 
+      .ease(d3.easeLinear)
       : null;
 
     const oneBarHeight = this.oneBarHeight;
@@ -738,7 +741,7 @@ class _VizabiPopByAge extends BaseComponent {
       .data((d, i) => (_this.barsData[i] = ageData.map(m => {
         const p = {};
         p[ageDim] = m[ageDim];
-        p[shiftedAgeDim] = m[shiftedAgeDim];    
+        p[shiftedAgeDim] = m[shiftedAgeDim];
         p.i = i;
         return p;
       }), this.barsData[i]), d => d[ageDim])
@@ -754,7 +757,7 @@ class _VizabiPopByAge extends BaseComponent {
             .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
         } else {
           ageBars.interrupt()
-            .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");  
+            .attr("transform", (d, i) => "translate(0," + (firstBarOffsetY - (d[shiftedAgeDim] - domain[0] - stepShift) * oneBarHeight) + ")");
         }
       });
 
@@ -778,8 +781,8 @@ class _VizabiPopByAge extends BaseComponent {
       .call(sideBars => {
         if (reorder) {
           sideBars.attr("class", (d, i) => "vzb-bc-side " + "vzb-bc-side-" + (!i != !_this.twoSided ? "right" : "left"))
-            .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");  
-        }  
+            .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
+        }
       });
 
     const _attributeUpdaters = this._attributeUpdaters;
@@ -845,7 +848,7 @@ class _VizabiPopByAge extends BaseComponent {
             .attr("width", _attributeUpdaters._newWidth)
             .attr("x", _attributeUpdaters._newX);
         }
-      
+
       });
 
     this.entityLabels = this.DOM.labels.selectAll(".vzb-bc-label text")
@@ -988,7 +991,7 @@ class _VizabiPopByAge extends BaseComponent {
         });
       });
     });
-  
+
     [...this.stackKeys, SYMBOL_STACKEDSUM].forEach(stackKey => {
       totals[stackKey] = {};
       steps.forEach(step => {
@@ -1013,7 +1016,7 @@ class _VizabiPopByAge extends BaseComponent {
       totals[_stack][_time][_side] += row.x;
       totals[SYMBOL_STACKEDSUM][_time][_side] ??= 0;
       totals[SYMBOL_STACKEDSUM][_time][_side] += row.x;
-      
+
       limits[_side][_time][_age][_stack] = row.x;
       limits[_side][_time][_age][SYMBOL_STACKEDSUM] ??= 0;
       limits[_side][_time][_age][SYMBOL_STACKEDSUM] += row.x;
@@ -1036,7 +1039,7 @@ class _VizabiPopByAge extends BaseComponent {
         }));
       }));
       inpercentMaxLimits[sideKey] = d3.max(inpercentLimitsArray);
-    })      
+    })
   }
 
   _updateLimits() {
@@ -1107,33 +1110,45 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   _redrawLocked() {
-    const _this = this;
-    if (!this.lock) return;
-    if (this.lockFrame) {
-      this._makeOutlines(this.lockFrame.axis_x, this.lockTotal);
-    } else {
-      const lockTime = this.model.time.parse("" + this.lock);
+    this.services.layout.size;
 
-      this.model.marker.getFrame(lockTime, lockFrame => {
-        if (!lockFrame) return;
-        _this.lockedPaths.text("");
-        this.lockFrame = {
-          axis_x: lockFrame.axis_x
-        };
-        this.lockTotal = this._updateTotal(lockTime);
-        this._makeOutlines(lockFrame.axis_x, this.lockTotal);
-      });
+    const _this = this;
+    if (this.ui.lockNonSelected) {
+      const lockTime = this.MDL.frame.parseValue(this.ui.lockNonSelected);
+      const lockFrame = this.model.getDataMapByFrameValue(lockTime);
+      const lockTotal = this._updateTotal(lockTime);
+      this._makeOutlines(lockFrame, lockTotal);
+    } else {
+      _this.DOM.lockedPaths.text("");
     }
+
+
+
+    // if (this.lockFrame) {
+    //   this._makeOutlines(this.lockFrame.axis_x, this.lockTotal);
+    // } else {
+    //   const lockTime = this.model.time.parse("" + this.lock);
+
+    //   this.model.marker.getFrame(lockTime, lockFrame => {
+    //     if (!lockFrame) return;
+    //     _this.lockedPaths.text("");
+    //     this.lockFrame = {
+    //       axis_x: lockFrame.axis_x
+    //     };
+    //     this.lockTotal = this._updateTotal(lockTime);
+    //     this._makeOutlines(lockFrame.axis_x, this.lockTotal);
+    //   });
+    // }
   }
 
   _makeOutlines(frame, total) {
     const _this = this;
 
-    const KEYS = utils.unique(this.model.marker._getAllDimensions({ exceptType: "time" }))
-    KEYS.forEach((key, i) => {
-        if (key === _this.AGEDIM) KEYS[i] = _this.SHIFTEDAGEDIM;
-        //if (_this.geoLess)
-      });
+    // const KEYS = utils.unique(this.model.marker._getAllDimensions({ exceptType: "time" }))
+    // KEYS.forEach((key, i) => {
+    //     if (key === _this.AGEDIM) KEYS[i] = _this.SHIFTEDAGEDIM;
+    //     //if (_this.geoLess)
+    //   });
 
     const groupBy = this.groupBy;
     const barHeight = this.barHeight;
@@ -1143,7 +1158,6 @@ class _VizabiPopByAge extends BaseComponent {
       .x(d => d.x)//_ + d.width_)
       .y((d, i) => firstBarOffsetY - barHeight * i  - (groupBy > 2 ? 1 : 0));
 
-    
     const pathsData = this.barsData.map((barsData, _i) => {
       const stackIndex = [0, 0];
 
@@ -1158,9 +1172,9 @@ class _VizabiPopByAge extends BaseComponent {
         const data = {};
         data.d = barsData.map(age => {
           const r = {};
-          const x = frame[utils.getKey(age.side[i].stack[stackIndex[i]], KEYS)];
+          const x = frame.getByStr(age.side[i].stack[stackIndex[i]][SYMBOL_KEY2])?.x;
           r.x = x ? _this.xScale(x) : 0;
-            if (_this.ui.chart.inpercent) {
+            if (_this.ui.inpercent) {
               r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
             }
           return r;
@@ -1169,14 +1183,14 @@ class _VizabiPopByAge extends BaseComponent {
       });
     });
 
-    const data = this.bars.selectAll(".vzb-bc-side-left").selectAll(".vzb-bc-stack-0").data();
-    const color = _this.cScale(data[0][this.PREFIXEDSTACKDIM])
-    const colorShade = this.model.marker.color.getColorShade({
-      colorID: _this.frameColor[data[0][this.PREFIXEDSTACKDIM]] || data[0][this.PREFIXEDSTACKDIM],
+    const data = this.DOM.bars.selectAll(".vzb-bc-side-left").selectAll(".vzb-bc-stack-0").data();
+    const color = this.cScale(data[0][this.PREFIXEDSTACKDIM])
+    const colorShade = this.MDL.color.scale.palette.getColorShade({
+      colorID: data[0][this.PREFIXEDSTACKDIM],
       shadeID: "shade"
     }) || "#000";//d3.hsl(color).darker(2);
 
-    this.lockedPaths.each(function(d, _i) {
+    this.DOM.lockedPaths.each(function(d, _i) {
       const paths = d3.select(this).selectAll("path").data(pathsData[_i]);
       paths.exit().remove();
       paths.enter()
@@ -1184,7 +1198,7 @@ class _VizabiPopByAge extends BaseComponent {
         .merge(paths)
         .attr("d", (d, i) => line(d.d))
         .attr("stroke", "#000")//colorShade)
-        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.activeProfile.centerWidth + ",0)") : "");
+        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
     });
   }
 
@@ -1282,7 +1296,7 @@ class _VizabiPopByAge extends BaseComponent {
           isPivotAuto: false,
           formatter: _this.localise
         });
-      
+
       d3.select(this).attr("transform", "translate(" + 0 + ",0)")
         .call(_this.yAxis)
         .classed("vzb-bc-axis-text-hidden", !_this.getYAxisVisibility(i));
@@ -1332,7 +1346,7 @@ class _VizabiPopByAge extends BaseComponent {
       this.xScaleLeft.range([(this.graphWidth[0] - this.profileConstants.centerWidth) * 0.5, 0]);
 
       xAxisLeftEl.each(function(d, i) {
-      
+
         _this.xAxisLeft.scale(_this.xScaleLeft.copy().domain(_this.domains[i]).range([(_this.graphWidth[i] - _this.profileConstants.centerWidth) * 0.5, 0]))
           .tickFormat(format)
           .tickSizeInner(-_this.height)
@@ -1355,7 +1369,7 @@ class _VizabiPopByAge extends BaseComponent {
     }
 
     const isRTL = this.services.locale.isRTL();
-    
+
     bars.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
     lockedPaths.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
     labels.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
@@ -1446,7 +1460,7 @@ class _VizabiPopByAge extends BaseComponent {
       .attr("x", left ? -this.profileConstants.centerWidth - deltaX : deltaX)
       .attr("dx", 0)
       .classed("vzb-text-left", left);
-    labelEl.classed("vzb-prehovered", true);      
+    labelEl.classed("vzb-prehovered", true);
     const bbox = labelNode.getBBox();
     const transform = _this.DOM.svg.node().getScreenCTM().inverse().multiply(labelNode.getScreenCTM());
     const overDrawLeft = Math.max(-bbox.x - transform.e, 0);
@@ -1934,7 +1948,7 @@ const _PopByAge = {
     this.xTitleEl = this.element.select(".vzb-bc-axis-x-title");
     this.xInfoEl = this.element.select(".vzb-bc-axis-x-info");
     this.yearEl = this.element.select(".vzb-bc-year-now");
-    this.year = new DynamicBackground(this.yearEl); 
+    this.year = new DynamicBackground(this.yearEl);
     this.year.setText(this.model.time.formatDate(this.model.time.value));
     this.yearLocked = this.element.select(".vzb-bc-year-locked");
 
@@ -1953,7 +1967,7 @@ const _PopByAge = {
     this._attributeUpdaters = {
       _newWidth(d, i) {
         //d["x_"] = 0;
-        let width;        
+        let width;
         if (_this.geoLess && _this.stackSkip && _this.sideSkip) {
           width = _this.frameAxisX[`${d[_this.AGEDIM] + _this.ageShift},${_this.geoDomainDefaultValue}`];
         } else if (_this.geoLess && _this.stackSkip) {
@@ -1993,7 +2007,7 @@ const _PopByAge = {
   ready() {
     //TODO: get component ready if some submodel doesn't ready ??????
     if (!this.model.marker._ready) return;
-    
+
     const _this = this;
 
     this.lock = _this.model.ui.chart.lockNonSelected;
@@ -2130,7 +2144,7 @@ const _PopByAge = {
         if (_this.smallMultiples) {
           utils.forEach(_this.stackKeys, (stackKey, i) => {
             _this._createLimits(fullFrames, stackKey);
-            _this._updateLimits(stackKey, i);            
+            _this._updateLimits(stackKey, i);
           });
         } else {
           _this._createLimits(fullFrames);
@@ -2320,7 +2334,7 @@ const _PopByAge = {
     // let ageKeys = [];
     // ageKeys = ages.map(m => m[ageDim]);
     //this.ageKeys = ageKeys;
-    this.ageKeys = 
+    this.ageKeys =
 
     this.shiftedAgeKeys = this.timeSteps.map((m, i) => -i * groupBy).slice(1).reverse().concat(ageKeys);
 
@@ -2378,7 +2392,7 @@ const _PopByAge = {
   _updateSideTitles() {
     const _this = this;
     const sideItems = this.sideItems;
-    
+
     this.titleRight.classed("vzb-hidden", !this.twoSided);
     if (this.twoSided) {
       this.title.text(sideItems[this.sideKeys[1]]).call(this.textEllipsis.clear);
@@ -2401,7 +2415,7 @@ const _PopByAge = {
   _createLimits(frames, stackKey) {
     const _this = this;
 
-    const stackKeys = stackKey ? [stackKey] : this.stackKeys;  
+    const stackKeys = stackKey ? [stackKey] : this.stackKeys;
     //const sideKeysNF = Object.keys(this.model.marker.side.getItems());
     const sideKeysNF = Object.keys(this.model.marker.side.getNestedItems([this.SIDEDIM]));
     if (!sideKeysNF.length) sideKeysNF.push("undefined");
@@ -2655,7 +2669,7 @@ const _PopByAge = {
       .data((d, i) => (_this.barsData[i] = ageData.map(m => {
         const p = {};
         p[ageDim] = m[ageDim];
-        p[shiftedAgeDim] = m[shiftedAgeDim];    
+        p[shiftedAgeDim] = m[shiftedAgeDim];
         p.i = i;
         return p;
       }), this.barsData[i]), d => d[ageDim]);
@@ -2811,7 +2825,7 @@ const _PopByAge = {
       .x(d => d.x)//_ + d.width_)
       .y((d, i) => firstBarOffsetY - barHeight * i  - (groupBy > 2 ? 1 : 0));
 
-    
+
     const pathsData = this.barsData.map((barsData, _i) => {
       const stackIndex = [0, 0];
 
@@ -2925,7 +2939,7 @@ const _PopByAge = {
       .attr("x", left ? -this.activeProfile.centerWidth - deltaX : deltaX)
       .attr("dx", 0)
       .classed("vzb-text-left", left);
-    labelEl.classed("vzb-prehovered", true);      
+    labelEl.classed("vzb-prehovered", true);
     const bbox = labelNode.getBBox();
     const transform = _this.element.node().getScreenCTM().inverse().multiply(labelNode.getScreenCTM());
     const overDrawLeft = Math.max(-bbox.x - transform.e, 0);
@@ -3077,7 +3091,7 @@ const _PopByAge = {
           fitIntoScale: "optimistic",
           isPivotAuto: false
         });
-      
+
       d3.select(this).attr("transform", "translate(" + 0 + ",0)")
         .call(_this.yAxis)
         .classed("vzb-bc-axis-text-hidden", !_this.getYAxisVisibility(i));
@@ -3126,7 +3140,7 @@ const _PopByAge = {
       this.xScaleLeft.range([(this.graphWidth[0] - this.activeProfile.centerWidth) * 0.5, 0]);
 
       this.xAxisLeftEl.each(function(d, i) {
-      
+
         _this.xAxisLeft.scale(_this.xScaleLeft.copy().domain(_this.domains[i]).range([(_this.graphWidth[i] - _this.activeProfile.centerWidth) * 0.5, 0]))
           .tickFormat(format)
           .tickSizeInner(-_this.height)
@@ -3148,7 +3162,7 @@ const _PopByAge = {
     }
 
     const isRTL = this.model.locale.isRTL();
-    
+
     this.bars.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
     this.lockedPaths.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
     this.labels.attr("transform", (d, i) => "translate(" + translateX[i] + ",0)");
