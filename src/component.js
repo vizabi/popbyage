@@ -592,29 +592,27 @@ class _VizabiPopByAge extends BaseComponent {
 
   _updateSideTitles() {
     const _this = this;
-    const sideItems = this.sideItems = this.MDL.label.data.response
-      .filter(row => row.dim == this.SIDEDIM)
-      .flatMap(row => row.data)
-      .reduce((result, row) => {
-        result[row[this.SIDEDIM]] = row.name;
-        return result;
+    const label = this.MDL.label.data.concept;
+
+    const sideItems = this.sideItems = this.SIDEDIM === "true" ? {} : this.sideKeys
+      .reduce((obj,m) => {
+        obj[m] = this.MDL.label.data.response.get({[this.SIDEDIM]: m})[label][this.SIDEDIM];
+        return obj;
       }, {});
 
-    const stackItems = this.stackItems = this.MDL.label.data.response
-      .filter(row => row.dim == this.STACKDIM)
-      .flatMap(row => row.data)
-      .reduce((result, row) => {
-        result[row[this.STACKDIM]] = row.name;
-        return result;
+    const stackItems = this.stackItems = this.stackKeys
+      .reduce((obj,m) => {
+        obj[m] = this.MDL.label.data.response.get({[this.STACKDIM]: m})[label][this.STACKDIM];
+        return obj;
       }, {});
 
     this.DOM.titleRight.classed("vzb-hidden", !this.twoSided);
     if (this.twoSided) {
       this.DOM.title.text(sideItems[this.sideKeys[1]]).call(this._textEllipsis.clear);
-      this.DOM.titleRight.text(sideItems[this.sideKeys[0]]).call(this._textEllipsis.clear);;
+      this.DOM.titleRight.text(sideItems[this.sideKeys[0]]).call(this._textEllipsis.clear);
     } else {
       const title = this.sideKeys.length && sideItems[this.sideKeys[0]] ? sideItems[this.sideKeys[0]] : "";
-      this.DOM.title.text(title).call(this._textEllipsis.clear);;
+      this.DOM.title.text(title).call(this._textEllipsis.clear);
     }
 
     if (this.smallMultiples) {
