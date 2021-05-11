@@ -17,7 +17,11 @@ import { VizabiPopByAge } from "./component";
 export default class PopByAge extends BaseComponent {
 
   constructor(config){
-    const marker = config.model.markers.popbyage;
+    const fullMarker = config.model.markers.pyramid;
+      
+    const frameType = config.Vizabi.stores.encodings.modelTypes.frame;
+    const { marker, splashMarker } = frameType.splashMarker(fullMarker);
+    config.model.markers.pyramid = marker;
 
     config.name = "popbyage";
 
@@ -78,6 +82,7 @@ export default class PopByAge extends BaseComponent {
     };
     
     super(config);
+    this.splashMarker = splashMarker;
   }
 }
 PopByAge.DEFAULT_UI = {
