@@ -323,12 +323,16 @@ class _VizabiPopByAge extends BaseComponent {
     //this.model.ui.lockUnavailable = !(this.stackKeys.length <= 1 || this.stackSkip || this.smallMultiples), false, false);
     // this.model.marker.getFrame(_this.model.time.value, (frame, time) => {
 
-    const time = frame.value;
+    // const time = frame.value;
+    const stepFraction = this.MDL.frame.step % 1;
 
-    this.frame = this._processData(this.model.dataArray);
+    this.frame = stepFraction == 0 ? 
+      this._processData(this.model.dataArray)
+      :
+      this._interpolateDiagonal(...this.MDL.frame.framesAround.map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction);
 
-      const frames = {};
-      frames[time] = this.frame;
+      // const frames = {};
+      // frames[time] = this.frame;
 
       // if (_this.smallMultiples) {
       //   utils.forEach(_this.stackKeys, (stackKey, i) => {
@@ -426,6 +430,19 @@ class _VizabiPopByAge extends BaseComponent {
     return data;
   }
 
+  _interpolateDiagonal(pData, nData, fraction) {
+    const data = {};
+    let newRow, shiftedRow;
+    newRow = Object.assign({}, nData.next().value);
+    data[newRow[SYMBOL_KEY]] = newRow;
+    for (const row of nData) {
+      newRow = Object.assign({}, row);
+      shiftedRow = pData.next().value;
+      newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
+      data[newRow[SYMBOL_KEY]] = newRow;
+    }
+    return data;
+  }
 
   _getData(name) {
     return this.state.facet ? this.MDL.facet[name][this.state.facet.index] : this.model[name];
@@ -820,7 +837,7 @@ class _VizabiPopByAge extends BaseComponent {
             return _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[prefixedStackDim])
           })
           //.attr("width", _attributeUpdaters._newWidth)
-          .attr("x", _attributeUpdaters._newX)
+          //.attr("x", _attributeUpdaters._newX)
           .on("mouseover", _this.interaction.mouseover)
           .on("mouseout", _this.interaction.mouseout)
           .on("click", _this.interaction.click)
@@ -879,95 +896,6 @@ class _VizabiPopByAge extends BaseComponent {
     // });
 
     this._year.setText(this.localise(this.MDL.frame.value), this.duration);
-  }
-
-  _interpolateDiagonal(pValues, nValues, fraction) {
-    const _this = this;
-    const data = {};
-    let val1, val2, shiftedAge, nKey, pKey;
-    const groupBy = this.groupBy;
-    const geoDefault = this.geoDomainDefaultValue;
-
-    if (this.geoLess && this.stackSkip && this.sideSkip) {
-      utils.forEach(_this.ageKeys, age => {
-        shiftedAge = +age + groupBy;
-        pKey = age + "," + geoDefault;
-        nKey = shiftedAge + "," + geoDefault;
-        val1 = pValues[pKey];
-        val2 = nValues[nKey] || 0;
-        data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-      });
-      nKey = 0 + "," + geoDefault;
-      data[nKey] = nValues[nKey] || 0;
-    } else if (this.stackSkip && this.geoLess) {
-      utils.forEach(_this.sideKeys, side => {
-        utils.forEach(_this.ageKeys, age => {
-          shiftedAge = +age + groupBy;
-          pKey = side + "," + age + "," + geoDefault;
-          nKey = side + "," + shiftedAge + "," + geoDefault;
-          val1 = pValues[pKey];
-          val2 = nValues[nKey] || 0;
-          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-        });
-        nKey = side + "," + 0 + "," + geoDefault;
-        data[nKey] = nValues[nKey] || 0;
-      });
-    } else if (this.stackSkip) {
-      utils.forEach(_this.sideKeys, side => {
-        utils.forEach(_this.ageKeys, age => {
-          shiftedAge = +age + groupBy;
-          pKey = side + "," + age;
-          nKey = side + "," + shiftedAge;
-          val1 = pValues[pKey];
-          val2 = nValues[nKey] || 0;
-          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-        });
-        nKey = side + "," + 0;
-        data[nKey] = nValues[nKey] || 0;
-      });
-    } else if (this.sideSkip && this.geoLess) {
-      utils.forEach(_this.stackKeys, stack => {
-        utils.forEach(_this.ageKeys, age => {
-          shiftedAge = +age + groupBy;
-          pKey = stack + "," + age + "," + geoDefault;
-          nKey = stack + "," + shiftedAge + "," + geoDefault;
-          val1 = pValues[pKey];
-          val2 = nValues[nKey] || 0;
-          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-        });
-        nKey = stack + "," + 0 + "," + geoDefault;
-        data[nKey] = nValues[nKey] || 0;
-      });
-    } else if (this.sideSkip) {
-      utils.forEach(_this.stackKeys, stack => {
-        utils.forEach(_this.ageKeys, age => {
-          shiftedAge = +age + groupBy;
-          pKey = stack + "," + age;
-          nKey = stack + "," + shiftedAge;
-          val1 = pValues[pKey];
-          val2 = nValues[nKey] || 0;
-          data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-        });
-        nKey = stack + "," + 0;
-        data[nKey] = nValues[nKey] || 0;
-      });
-    } else {
-      utils.forEach(_this.stackKeys, stack => {
-        utils.forEach(_this.sideKeys, side => {
-          utils.forEach(_this.ageKeys, age => {
-            shiftedAge = +age + groupBy;
-            pKey = stack + "," + side + "," + age;
-            nKey = stack + "," + side + "," + shiftedAge;
-            val1 = pValues[pKey];
-            val2 = nValues[nKey] || 0;
-            data[nKey] = (val1 == null || val2 == null) ? null : val1 + ((val2 - val1) * fraction);
-          });
-          nKey = stack + "," + side + "," + 0;
-          data[nKey] = nValues[nKey] || 0;
-        });
-      });
-    }
-    return data;
   }
 
   _setupLimits() {
