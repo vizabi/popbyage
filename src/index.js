@@ -13,6 +13,7 @@ import {
   versionInfo
 } from "VizabiSharedComponents";
 import { VizabiPopByAge } from "./component";
+import { Grouping } from "./dialogs/grouping/grouping.js";
 
 export default class PopByAge extends BaseComponent {
 
