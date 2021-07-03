@@ -561,21 +561,21 @@ class _VizabiPopByAge extends BaseComponent {
   _interaction() {
     const _this = this;
     return {
-      mouseover(d, i) {
+      mouseover(event, d) {
         if (utils.isTouchDevice()) return;
         _this.MDL.highlighted.data.filter.set(d, JSON.stringify({color: d[_this.STACKDIM]}));
-        _this._showLabel(d);
+        _this._showLabel(event, d);
       },
-      mouseout(d, i) {
+      mouseout(event, d) {
         if (utils.isTouchDevice()) return;
         _this.MDL.highlighted.data.filter.delete(d);
       },
-      click(d, i) {
+      click(event, d) {
         if (utils.isTouchDevice()) return;
         _this.MDL.selected.data.filter.toggle(d);
       },
-      tap(d) {
-        d3.event.stopPropagation();
+      tap(event, d) {
+        event.stopPropagation();
         _this.MDL.selected.data.filter.set(d);
       }
     };
@@ -1259,7 +1259,7 @@ class _VizabiPopByAge extends BaseComponent {
 
   }
 
-  _showLabel(d) {
+  _showLabel(event, d) {
     const _this = this;
     const formatter = _this.ui.inpercent ? d3.format(".1%") : _this.localise;
     const sideDim = _this.SIDEDIM;
@@ -1270,7 +1270,7 @@ class _VizabiPopByAge extends BaseComponent {
 
     let deltaX = 7;
     if (!this.smallMultiples) {
-      const hoverBarEl = d3.select(d3.event.target);
+      const hoverBarEl = d3.select(event.target);
       deltaX += +hoverBarEl.attr("x");
     }
 
@@ -2705,21 +2705,21 @@ const _PopByAge = {
   _interaction() {
     const _this = this;
     return {
-      mouseover(d, i) {
+      mouseover(event, d) {
         if (utils.isTouchDevice()) return;
         _this.model.marker.highlightMarker(d);
-        _this._showLabel(d);
+        _this._showLabel(event, d);
       },
-      mouseout(d, i) {
+      mouseout(event, d) {
         if (utils.isTouchDevice()) return;
         _this.model.marker.clearHighlighted();
       },
-      click(d, i) {
+      click(event, d) {
         if (utils.isTouchDevice()) return;
         _this.model.marker.selectMarker(d);
       },
-      tap(d) {
-        d3.event.stopPropagation();
+      tap(event, d) {
+        event.stopPropagation();
         _this.model.marker.selectMarker(d);
       }
     };
@@ -2738,7 +2738,7 @@ const _PopByAge = {
     }
   },
 
-  _showLabel(d) {
+  _showLabel(event, d) {
     const _this = this;
     const formatter = _this.ui.chart.inpercent ? d3.format(".1%") : _this.model.marker.axis_x.getTickFormatter();
     const sideDim = _this.SIDEDIM;
@@ -2749,7 +2749,7 @@ const _PopByAge = {
 
     let deltaX = 7;
     if (!this.smallMultiples) {
-      const hoverBarEl = d3.select(d3.event.target);
+      const hoverBarEl = d3.select(event.target);
       deltaX += +hoverBarEl.attr("x");
     }
 
