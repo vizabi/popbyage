@@ -1,6 +1,6 @@
 {
   "name": "@vizabi/popbyage",
-  "version": "3.2.3",
+  "version": "3.2.4",
   "description": "Vizabi age pyrmid",
   "scripts": {
     "prepublishOnly": "npm run build",
@@ -53,6 +53,6 @@
     "@vizabi/shared-components": "../shared-components",
     "cross-env": "^5.0.0",
     "css.escape": "^1.5.1",
-    "vizabi-tool-bundler": "^1.2.1"
+    "vizabi-tool-bundler": "^1.2.2"
   }
 }
