@@ -107,18 +107,18 @@
         fill: $vzb-color-primary;
         pointer-events: none;
       }
-      .vzb-bc-year {
+      .vzb-bc-date {
         @extend %vzb-chart-axis-title;
         fill: $vzb-color-grey;
         text-anchor: end;
         -webkit-touch-callout: none;
         user-select: none;
         pointer-events: none;
-        &.vzb-bc-year-locked {
+        &.vzb-bc-date-locked {
           fill: $vzb-color-black;
         }
       }
-      .vzb-bc-year-now {
+      .vzb-bc-date-now {
         @include opacity(.6);
         fill: $vzb-color-primary;
         text-anchor: middle;
@@ -155,13 +155,13 @@
     }
     .vzb-bc-axis-x-title,
     .vzb-bc-title,
-    .vzb-bc-year {
+    .vzb-bc-date {
       @extend %vzb-chart-axis-title-large;
     }
     .vzb-bc-title {
       font-size: 1.2em;
     }
-    .vzb-bc-year-now {
+    .vzb-bc-date-now {
       visibility: hidden;
     }
   }
@@ -176,7 +176,7 @@
     }
     .vzb-bc-axis-x-title,
     .vzb-bc-title,
-    .vzb-bc-year {
+    .vzb-bc-date {
       @extend %vzb-chart-axis-title-medium;
     }
     .vzb-bc-title {
@@ -194,13 +194,13 @@
     }
     .vzb-bc-axis-x-title,
     .vzb-bc-title,
-    .vzb-bc-year {
+    .vzb-bc-date {
       @extend %vzb-chart-axis-title-small;
     }
     .vzb-bc-title {
       font-size: .9em;
     }
-    .vzb-bc-year-locked {
+    .vzb-bc-date-locked {
       visibility: hidden;
     }
   }

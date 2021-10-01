@@ -4,7 +4,7 @@ import {
   Utils,
   LegacyUtils as utils,
   axisSmart,
-  DynamicBackground,
+  DateTimeBackground,
   TextEllipsis
 } from "VizabiSharedComponents";
 
@@ -76,8 +76,8 @@ class _VizabiPopByAge extends BaseComponent {
 
   constructor(config) {
     config.subcomponents = [{
-      type: DynamicBackground,
-      placeholder: ".vzb-bc-year-now"
+      type: DateTimeBackground,
+      placeholder: ".vzb-bc-date-now"
     }];
 
     config.template = `
@@ -87,8 +87,8 @@ class _VizabiPopByAge extends BaseComponent {
               <text></text>
             </g>
             <g class="vzb-bc-axis-x-info vzb-noexport"></g>
-            <g class="vzb-bc-year-now"></g>
-            <text class="vzb-bc-year vzb-bc-year-locked"></text>
+            <g class="vzb-bc-date-now"></g>
+            <text class="vzb-bc-date vzb-bc-date-locked"></text>
         </g>
         <g class="vzb-bc-graph">
             <text class="vzb-bc-title"></text>
@@ -143,11 +143,11 @@ class _VizabiPopByAge extends BaseComponent {
       svg: this.element.select(".vzb-popbyage-svg"),
       xTitleEl: this.element.select(".vzb-bc-axis-x-title"),
       xInfoEl: this.element.select(".vzb-bc-axis-x-info"),
-      yearLocked: this.element.select(".vzb-bc-year-locked"),
+      dateLocked: this.element.select(".vzb-bc-date-locked"),
       forecastOverlay: this.element.select(".vzb-bc-forecastoverlay")
     };
 
-    this._year = this.findChild({type: "DynamicBackground"});
+    this._date = this.findChild({type: "DateTimeBackground"});
 
     this._textEllipsis = new TextEllipsis(this);
     this._textEllipsis.setTooltip(this.element.select(".vzb-bc-tooltip"));
@@ -809,7 +809,7 @@ class _VizabiPopByAge extends BaseComponent {
     //   return d3.rgb(color).darker(2);
     // });
 
-    this._year.setText(this.localise(this.MDL.frame.value), this.duration);
+    this._date.setText(this.MDL.frame.value, this.duration);
   }
 
   _isDragging(){
@@ -966,10 +966,10 @@ class _VizabiPopByAge extends BaseComponent {
       const lockTotal = this._updateTotal(lockTime);
       this._makeOutlines(lockFrame, lockTotal);
 
-      this.DOM.yearLocked.text("" + this.ui.lockNonSelected);
+      this.DOM.dateLocked.text("" + this.ui.lockNonSelected);
     } else {
       this.DOM.lockedPaths.text("");
-      this.DOM.yearLocked.text("");
+      this.DOM.dateLocked.text("");
     }
 
   }
@@ -1054,7 +1054,7 @@ class _VizabiPopByAge extends BaseComponent {
       titleRight,
       xTitleEl,
       xInfoEl,
-      yearLocked,
+      dateLocked,
     } = this.DOM;
 
     const margin = this.profileConstants.margin;
@@ -1252,10 +1252,10 @@ class _VizabiPopByAge extends BaseComponent {
     };
 
     //year resized
-    this._year
+    this._date
       .setConditions(yearLabelOptions)
       .resizeText(this.fullWidth, margin.top);
-    yearLocked.attr("x", this.width + margin.left + margin.right - 10).attr("y", (margin.top - deltaMarginTop) * (this.services.layout.profile === "large" ? 1.27 : 1.27));
+    dateLocked.attr("x", this.width + margin.left + margin.right - 10).attr("y", (margin.top - deltaMarginTop) * (this.services.layout.profile === "large" ? 1.27 : 1.27));
 
   }
 
