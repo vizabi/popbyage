@@ -10,7 +10,9 @@ import {
   Dialogs,
   ButtonList,
   CapitalVizabiService,
-  versionInfo
+  Repeater,
+  Facet,
+  versionInfo,
 } from "VizabiSharedComponents";
 import { VizabiPopByAge } from "./component";
 import { Grouping } from "./dialogs/grouping/grouping.js";
@@ -27,10 +29,19 @@ export default class PopByAge extends BaseComponent {
     config.name = "popbyage";
 
     config.subcomponents = [{
-      type: VizabiPopByAge,
-      placeholder: ".vzb-popbyage",
+      type: Repeater,
+      placeholder: ".vzb-repeater",
       model: marker,
-      name: "chart"
+      options: {
+        repeatedComponent: Facet, 
+        repeatedComponentCssClass: "vzb-facet",
+        repeatedComponentOptions: {
+          facetedComponent: VizabiPopByAge,
+          facetedComponentCssClass: "vzb-popbyage",
+          direction: "column"
+        }
+      },
+      name: "chart",
     },{
       type: TimeSlider,
       placeholder: ".vzb-timeslider",
@@ -63,7 +74,9 @@ export default class PopByAge extends BaseComponent {
     }];
 
     config.template = `
-      <div class="vzb-popbyage"></div>
+      <div class="vzb-chart">
+        <div class="vzb-repeater"></div>
+      </div>
       <div class="vzb-animationcontrols">
         <div class="vzb-timeslider"></div>
         <div class="vzb-speedslider"></div>
