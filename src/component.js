@@ -163,7 +163,7 @@ class _VizabiPopByAge extends BaseComponent {
       side: this.model.encoding.side,
       color: this.model.encoding.color,
       label: this.model.encoding.label,
-      facet: this.model.encoding.facet,
+      facet: this.model.encoding.facet_column,
       aggregate: this.model.encoding.aggregate
     };
   }
