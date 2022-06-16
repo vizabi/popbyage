@@ -4,6 +4,21 @@
 @import "../node_modules/@vizabi/shared-components/src/styles/vizabi-old/_chart.scss";
 
 .vzb-tool {
+
+  .vzb-facet {
+    .vzb-facet-inner:not(.vzb-facet-column-first) {
+      .vzb-bc-axis-y .tick text {visibility: hidden;}
+      .vzb-bc-axis-x-title, .vzb-bc-axis-x-info {
+        visibility: hidden;
+      }
+    }
+    .vzb-facet-inner:not(.vzb-facet-column-last) {
+      .vzb-bc-date-now, .vzb-bc-date-locked {
+        visibility: hidden;
+      }
+    }
+  }
+
   .vzb-popbyage {
     @extend %vzb-chart-wrapper;
 
