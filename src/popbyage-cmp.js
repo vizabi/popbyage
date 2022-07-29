@@ -1199,12 +1199,17 @@ class _VizabiPopByAge extends BaseComponent {
         _this._textEllipsis.wrap(this, width +  margin.betweenColumn)
       });
     
+
+    const titleWidth = titleCenter.node().getBoundingClientRect().width;
+    const xPosCloseCross = titleWidth > width ? (titleWidth - width) * 0.5 : null;
+
     this.DOM.closeCross
       .style("font-size", infoElHeight + "px")
-      .attr("transform", "translate(" + (isRTL ? 0 : width) + "," + height + ")")
+      .attr("transform", "translate(" + (isRTL ? 0 : width) + "," + (-margin.top - deltaMarginTop)* 0.035 + ")")
       .select("text")
-      .attr("dx", "-0.1em")
-      .attr("dy", "-0.2em");
+      .attr("dx", isRTL ? "-0.5em": "-0.1em")
+      .attr("dy", "-0.05em")
+      .attr("x", (isRTL ? -1 : 1) * xPosCloseCross);
 
     xTitleEl
       .style("font-size", infoElHeight + "px")
