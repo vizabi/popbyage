@@ -276,6 +276,10 @@ class _VizabiPopByAge extends BaseComponent {
       return this.model.dataArray;
   }
 
+  get _getFacetEncName() {
+    return "facet_" + this.parent.direction;
+  }
+
   drawData() {
     this.size;
 
@@ -300,7 +304,7 @@ class _VizabiPopByAge extends BaseComponent {
 
     this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step)).rows()])
       : 
-      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction)
+      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name)
     this._updateEntities(true, 
       step ?? this.stepSeries[0],
       step == undefined ? this.MDL.frame.stepScale.domain()[0] : this.MDL.frame.stepScale.invert(step)
@@ -333,12 +337,21 @@ class _VizabiPopByAge extends BaseComponent {
     return data;
   }
 
-  _interpolateDiagonal(pData, nData, fraction) {
+  _interpolateDiagonal(pData, nData, fraction, filterKey, filterValue) {
     const data = {};
     let newRow, shiftedRow;
-    newRow = Object.assign({}, nData.next().value);
-    data[newRow[SYMBOL_KEY]] = newRow;
     for (const row of nData) {
+      if (row[filterKey] == filterValue) {
+        newRow = Object.assign({}, row);
+        data[newRow[SYMBOL_KEY]] = newRow;
+        break;
+      }
+      pData.next();
+    }
+    for (const row of nData) {
+      if (row[filterKey] !== filterValue) {
+        break;
+      }
       newRow = Object.assign({}, row);
       shiftedRow = pData.next().value;
       newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
@@ -1417,6 +1430,7 @@ export const VizabiPopByAge = decorate(_VizabiPopByAge, {
   "isInFacet": computed,
   "isManyFacets": computed,
   "_getDataArrayForFacet": computed,
+  "_getFacetEncName": computed,
   "size": computed,
   "profileConstants": computed,
   "barHeight": computed,
