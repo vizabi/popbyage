@@ -1,4 +1,4 @@
-import {Dialog, SingleHandleSlider} from "VizabiSharedComponents";
+import {Dialog, SingleHandleSlider} from "@vizabi/shared-components";
 
 /*
  * grouping dialog
@@ -37,8 +37,8 @@ class Grouping extends Dialog {
         set value(value) {
           _this.encoding.aggregate.config.grouping[GROUP_KEY].grouping = value;
         }
-      }
-    }
+      };
+    };
 
     const groupStops = [1, 5, 10, 15];
     config.options = Object.assign(config.options || {}, {groupStops});
@@ -73,54 +73,6 @@ class Grouping extends Dialog {
       .text(d => d);
   }
 }
-
-
-
-
-const _Grouping = {
-
-/**
- * Initializes the dialog component
- * @param config component configuration
- * @param context component context (parent)
- */
-  init(config, parent) {
-    this.name = "grouping";
-
-    // in dialog, this.model_expects = ["state", "data"];
-
-    this.groupStops = [1, 5, 10, 15];
-
-    this.components = [
-      {
-        component: singlehandleslider,
-        placeholder: ".vzb-dialog-placeholder",
-        model: ["state.entities_age", "locale"],
-        arg: "grouping",
-        properties: {
-          snapValue: true,
-          suppressInput: true,
-          domain: this.groupStops
-        }
-      }
-    ];
-
-    this._super(config, parent);
-  },
-
-  readyOnce() {
-    this._super();
-    //    this.element = d3.select(this.element);
-    const groups = this.element.select(".vzb-dialog-groups");
-
-    groups.selectAll(".vzb-dialog-groups-title")
-      .data(this.groupStops)
-      .enter()
-      .append("span")
-      .attr("class", ".vzb-dialog-groups-title")
-      .text(d => d);
-  }
-};
 
 // const decorated = decorate(Grouping, {
 //   "MDL": computed

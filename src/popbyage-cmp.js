@@ -6,7 +6,8 @@ import {
   axisSmart,
   DateTimeBackground,
   TextEllipsis
-} from "VizabiSharedComponents";
+} from "@vizabi/shared-components";
+import * as d3 from "d3";
 
 import {
   decorate,

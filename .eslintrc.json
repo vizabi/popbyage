@@ -5,19 +5,18 @@
     },
     "extends": "eslint:recommended",
     "globals": {
-        "d3": true,
         "ENV": true,
-        
         "__VERSION": "readonly",
         "__BUILD": "readonly",
         "__PACKAGE_JSON_FIELDS": "readonly"
     },
     "parserOptions": {
-        "ecmaVersion": 2021,
+        "ecmaVersion": 2020,
         "sourceType": "module"
     },
     "rules": {
-        "no-console": "off",
+        "no-prototype-builtins": "off",
+        "no-console": "warn",
         "indent": [
             "warn",
             2

@@ -13,9 +13,9 @@ import {
   Repeater,
   Facet,
   versionInfo,
-} from "VizabiSharedComponents";
+} from "@vizabi/shared-components";
 import { VizabiPopByAge } from "./popbyage-cmp.js";
-import { Grouping } from "./dialogs/grouping/grouping.js";
+import { Grouping } from "./dialogs/grouping/grouping.js"; Grouping;
 
 export default class PopByAge extends BaseComponent {
 
@@ -89,6 +89,8 @@ export default class PopByAge extends BaseComponent {
       <div class="vzb-datanotes"></div>
     `;
   
+    config.locale.Vizabi = config.Vizabi;
+    config.layout.Vizabi = config.Vizabi;
     config.services = {
       Vizabi: new CapitalVizabiService({Vizabi: config.Vizabi}),
       locale: new LocaleService(config.locale),
