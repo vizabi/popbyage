@@ -1018,13 +1018,6 @@ class _VizabiPopByAge extends BaseComponent {
       });
     });
 
-    const data = this.DOM.bars.selectAll(".vzb-bc-side-left").selectAll(".vzb-bc-stack-0").data();
-    const color = this.cScale(data[0][this.PREFIXEDSTACKDIM])
-    const colorShade = this.MDL.color.scale.palette.getColorShade({
-      colorID: data[0][this.PREFIXEDSTACKDIM],
-      shadeID: "shade"
-    }) || "#000";//d3.hsl(color).darker(2);
-
     this.DOM.lockedPaths.each(function(d, _i) {
       const paths = d3.select(this).selectAll("path").data(pathsData[_i]);
       paths.exit().remove();
@@ -1032,7 +1025,7 @@ class _VizabiPopByAge extends BaseComponent {
         .append("path")
         .merge(paths)
         .attr("d", (d, i) => line(d.d))
-        .attr("stroke", "#000")//colorShade)
+        .attr("stroke", "#000")
         .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
     });
   }
