@@ -753,7 +753,9 @@ class _VizabiPopByAge extends BaseComponent {
           .attr("fill", d => {
             return _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[prefixedStackDim])
           })
-          //.attr("width", _attributeUpdaters._newWidth)
+          .attr("width", (d, i) => {
+            return duration ? _attributeUpdaters._newWidth(d, i) : null;
+          })
           //.attr("x", _attributeUpdaters._newX)
           .on("mouseover", _this.interaction.mouseover)
           .on("mouseout", _this.interaction.mouseout)
