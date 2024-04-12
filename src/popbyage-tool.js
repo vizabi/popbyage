@@ -16,6 +16,7 @@ import {
 } from "@vizabi/shared-components";
 import { VizabiPopByAge } from "./popbyage-cmp.js";
 import { Grouping } from "./dialogs/grouping/grouping.js"; Grouping;
+import { Side } from "./dialogs/side/side.js"; Side;
 
 export default class PopByAge extends BaseComponent {
 

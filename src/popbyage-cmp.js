@@ -448,7 +448,8 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   get sideKeys() {
-    return this.MDL.side.scale.domain;
+    const _sideKeys = this.MDL.side.scale.domain;
+    return _sideKeys.length <= 1 ? _sideKeys : _sideKeys.sort(this.root.ui.chart.flipSides ? d3.ascending : d3.descending).slice(0);
   }
 
   get stackKeys() {
