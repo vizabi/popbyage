@@ -305,7 +305,7 @@ class _VizabiPopByAge extends BaseComponent {
 
     this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step)).rows()])
       : 
-      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name)
+      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip)
     this._updateEntities(true, 
       step ?? this.stepSeries[0],
       step == undefined ? this.MDL.frame.stepScale.domain()[0] : this.MDL.frame.stepScale.invert(step)
@@ -338,13 +338,18 @@ class _VizabiPopByAge extends BaseComponent {
     return data;
   }
 
-  _interpolateDiagonal(pData, nData, fraction, filterKey, filterValue) {
+  _interpolateDiagonal(pData, nData, fraction, filterKey, filterValue, sided) {
     const data = {};
     let newRow, shiftedRow;
     for (const row of nData) {
       if (row[filterKey] == filterValue) {
         newRow = Object.assign({}, row);
         data[newRow[SYMBOL_KEY]] = newRow;
+        if (sided) {
+          newRow = Object.assign({}, nData.next().value);
+          data[newRow[SYMBOL_KEY]] = newRow;
+          pData.drop(2);
+        }
         break;
       }
       pData.next();
@@ -357,6 +362,12 @@ class _VizabiPopByAge extends BaseComponent {
       shiftedRow = pData.next().value;
       newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
       data[newRow[SYMBOL_KEY]] = newRow;
+      if (sided) {
+        newRow = Object.assign({}, nData.next().value);
+        shiftedRow = pData.next().value;
+        newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
+        data[newRow[SYMBOL_KEY]] = newRow;  
+      }
     }
     return data;
   }
