@@ -468,7 +468,7 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   get xScale() {
-    const maxRange = this.twoSided ? (this.size.innerWidth - this.profileConstants.centerWidth) * 0.5 : this.size.innerWidth;
+    const maxRange = this.twoSided ? Math.abs(this.size.innerWidth - this.profileConstants.centerWidth) * 0.5 : this.size.innerWidth;
     return this.MDL.x.scale.d3Scale.copy().domain(this.domains[0]).range([0, maxRange]);
   }
 
