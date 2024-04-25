@@ -20,6 +20,7 @@ const {ICON_QUESTION} = Icons;
 const SYMBOL_KEY = Symbol.for("key");
 const SYMBOL_KEY2 = Symbol.for("key2");
 const SYMBOL_STACKEDSUM = Symbol.for("stackedSum");
+const OVERHANG = "_overhang";
 
 //
 // POPBYAGE CHART COMPONENT
@@ -134,6 +135,10 @@ class _VizabiPopByAge extends BaseComponent {
         //   d["x_"] = 0;
         // }
         return d.x_;
+      },
+      _newColor(d) {
+        const color = _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[_this.PREFIXEDSTACKDIM]);
+        return d[_this.STACKDIM] == OVERHANG ? d3.color(color).darker(1) : color;
       }
     };
 
@@ -305,12 +310,32 @@ class _VizabiPopByAge extends BaseComponent {
 
     this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step)).rows()])
       : 
-      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip)
+      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip);
+    if (this.overhang && !this.sideSkip) this._addOverHangData(this.frame);
+
     this._updateEntities(true, 
       step ?? this.stepSeries[0],
       step == undefined ? this.MDL.frame.stepScale.domain()[0] : this.MDL.frame.stepScale.invert(step)
     );
     this.updateBarsOpacity();
+  }
+
+  _addOverHangData(frame) {
+    const keyFn = this.model.dataMap.keyFn;
+    const keys = Object.keys(frame);
+    const stackDim = this.STACKDIM;
+    let data1, data2, x1, x2;
+    for(let i = 0; i < keys.length; i = i + 2) {
+      data1 = Object.assign({}, frame[keys[i]]);
+      data2 = Object.assign({}, frame[keys[i + 1]]);
+      data1[stackDim] = data2[stackDim] = OVERHANG;
+      x1 = data1.x;
+      x2 = data2.x;
+      data1.x = x1 > x2 ? x1 - x2 : 0;
+      data2.x = x2 > x1 ? x2 - x1 : 0;
+      frame[keyFn(data1)] = data1;
+      frame[keyFn(data2)] = data2;
+    }
   }
 
   __updateGraphDOM(graph) {
@@ -512,6 +537,10 @@ class _VizabiPopByAge extends BaseComponent {
     return this.MDL.side.data.isConstant;
   }
 
+  get overhang() {
+    return this.root.ui.chart.overhang;
+  }
+
   /**
    * Changes labels for indicators
    */
@@ -640,7 +669,8 @@ class _VizabiPopByAge extends BaseComponent {
 
     if (nextStep) ageData.push(outAge);
 
-    const stacks = _this.stacked ? _this.stackKeys : [_this.geoDomainDefaultValue];
+    const stacks = _this.stacked ? _this.stackKeys.slice(0) : [_this.geoDomainDefaultValue];
+    if (this.overhang) stacks.push(OVERHANG);
     const geoDomainDefaultValue = this.geoDomainDefaultValue;
     const geoDomainDimension = this.geoDomainDimension;
 
@@ -762,13 +792,13 @@ class _VizabiPopByAge extends BaseComponent {
           .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
           .attr("y", 0)
           .attr("height", barHeight - (groupBy > 2 ? 1 : 0))
-          .attr("fill", d => {
-            return _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[prefixedStackDim])
-          })
+          .attr("fill", _attributeUpdaters._newColor)
           .attr("width", (d, i) => {
             return duration ? _attributeUpdaters._newWidth(d, i) : null;
           })
-          //.attr("x", _attributeUpdaters._newX)
+          .attr("x", function(d, i) {
+            return duration ? _attributeUpdaters._newX.call(this, d, i) : null;
+          })
           .on("mouseover", _this.interaction.mouseover)
           .on("mouseout", _this.interaction.mouseout)
           .on("click", _this.interaction.click)
@@ -779,9 +809,7 @@ class _VizabiPopByAge extends BaseComponent {
       .call(stackBars => {
         if (reorder) stackBars
         .attr("class", (d, i) => "vzb-bc-stack " + "vzb-bc-stack-" + i + (_this.highlighted ? " vzb-dimmed" : ""))
-        .attr("fill", d => {
-          return _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[prefixedStackDim])
-        })
+        .attr("fill", _attributeUpdaters._newColor)
         .order();
 
         if (duration) {
@@ -982,11 +1010,16 @@ class _VizabiPopByAge extends BaseComponent {
     const _this = this;
     if (this.ui.lockNonSelected) {
       this.lock = this.ui.lockNonSelected;
+      this.overhang;
+      this.sideSkip;
 
       const lockTime = this.MDL.frame.parseValue(this.ui.lockNonSelected);
-      const lockFrame = this.model.getDataMapByFrameValue(lockTime);
+      const lockFrame = this._processData([...this.model.getDataMapByFrameValue(lockTime).rows()]);
       const lockTotal = this._updateTotal(lockTime);
-      this._makeOutlines(lockFrame, lockTotal);
+      runInAction(() => {
+        if (this.overhang && !this.sideSkip) this._addOverHangData(lockFrame);      
+        this._makeOutlines(lockFrame, lockTotal);
+      });
 
       this.DOM.dateLocked.text("" + this.ui.lockNonSelected);
     } else {
@@ -1007,8 +1040,10 @@ class _VizabiPopByAge extends BaseComponent {
       .x(d => d.x)//_ + d.width_)
       .y((d, i) => firstBarOffsetY - barHeight * i  - (groupBy > 2 ? 1 : 0));
 
+    const pathDataOverhang = [];
     const pathsData = this.barsData.map((barsData, _i) => {
       const stackIndex = [0, 0];
+      pathDataOverhang.push([]);
 
       return this.sideKeys.map((s, i) => {
         if (_this.stackSkip) {
@@ -1021,16 +1056,33 @@ class _VizabiPopByAge extends BaseComponent {
         const data = {};
         data.d = barsData.map(age => {
           const r = {};
-          const x = frame.getByStr(age.side[i].stack[stackIndex[i]][SYMBOL_KEY2])?.x;
+          const x = frame[age.side[i].stack[stackIndex[i]][SYMBOL_KEY2]]?.x;
           r.x = x ? _this.xScale(x) : 0;
             if (_this.ui.inpercent) {
               r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
             }
           return r;
         });
+
+        if (this.overhang && !this.sideSkip) {
+          const dataOverhang = barsData.map(age => {
+            const r = {};
+            const x = frame[age.side[i].stack[stackIndex[i]][SYMBOL_KEY2]]?.x;
+            const x_overhang = frame[age.side[i].stack[stackIndex[i] + 1][SYMBOL_KEY2]]?.x;
+            r.x = x && x_overhang ? _this.xScale(x) + _this.xScale(x_overhang) : x ? _this.xScale(x) : 0;
+              if (_this.ui.inpercent) {
+                r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
+              }
+            return r;
+          });
+
+          pathDataOverhang[_i].push({d: dataOverhang});       }
+
         return data;
       });
     });
+
+    pathsData.map((p, i) => p.push(...pathDataOverhang[i]));
 
     this.DOM.lockedPaths.each(function(d, _i) {
       const paths = d3.select(this).selectAll("path").data(pathsData[_i]);
@@ -1040,7 +1092,7 @@ class _VizabiPopByAge extends BaseComponent {
         .merge(paths)
         .attr("d", (d, i) => line(d.d))
         .attr("stroke", "#000")
-        .attr("transform", (d, i) => i ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
+        .attr("transform", (d, i) => i % 2 ? ("scale(-1,1) translate(" + _this.profileConstants.centerWidth + ",0)") : "");
     });
   }
 
@@ -1444,5 +1496,6 @@ export const VizabiPopByAge = decorate(_VizabiPopByAge, {
   "barHeight": computed,
   "oneBarHeight": computed,
   "firstBarOffsetY": computed,
-  "sideSkip": computed
+  "sideSkip": computed,
+  "overhang": computed
 });
