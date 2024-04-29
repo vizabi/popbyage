@@ -921,12 +921,7 @@ class _VizabiPopByAge extends BaseComponent {
   get domains() {
     this.groupBy;
     
-    const maxLimits = {};
-    const inpercentMaxLimits = {};
-    const domains = [];
-    this._createLimits(maxLimits, inpercentMaxLimits, this.allLimitsAndTotals.totals);
-    this._createDomains(domains, maxLimits, inpercentMaxLimits);
-    return domains;
+    return this._createDomains(this._calcLimit(this.allLimitsAndTotals.totals, this.allLimitsAndTotals.limits));
   }
 
   _updateMaxValues() {
@@ -941,39 +936,44 @@ class _VizabiPopByAge extends BaseComponent {
     }
   }
 
-  _createLimits(maxLimits = {}, inpercentMaxLimits = {}, totals, stackKey) {
+  _calcLimit(totals, limits, stackKey) {
+    const overhang = this.overhang && !this.sideSkip;
+    const inpercent = this.ui.inpercent;
     const steps = this.MDL.frame.stepScale.domain();
-    this.sideKeys.forEach(sideKey => {
-      const inpercentLimitsArray = [];
-      maxLimits[sideKey] = d3.max(steps.map(step => {
-        const stepObj = this.allLimitsAndTotals.limits[sideKey][step];
-        return d3.max(Object.values(stepObj).map(stacksObj => {
-          const stackValue = stacksObj[stackKey ?? SYMBOL_STACKEDSUM];
-          inpercentLimitsArray.push(stackValue / totals[stackKey ?? SYMBOL_STACKEDSUM][step][sideKey]);
-          return stackValue;
-        }));
-      }));
-      inpercentMaxLimits[sideKey] = d3.max(inpercentLimitsArray);
+    const sideSkip = this.sideSkip;
+    const sideKeys = this.sideKeys;
+
+    const limitsArray = [];
+    let limitLeft, limitRight;
+
+    steps.map(step => {
+      this.ageKeys.map(age => {
+        limitLeft = limits[sideKeys[0]][step][age][stackKey ?? SYMBOL_STACKEDSUM];
+        if (inpercent) limitLeft /= totals[stackKey ?? SYMBOL_STACKEDSUM][step][sideKeys[0]];
+        if (sideSkip) {
+          limitsArray.push(limitLeft);
+        } else {
+          limitRight = limits[sideKeys[1]][step][age][stackKey ?? SYMBOL_STACKEDSUM];
+          if (inpercent) limitRight /= totals[stackKey ?? SYMBOL_STACKEDSUM][step][sideKeys[1]];
+          limitsArray.push(overhang ? limitLeft > limitRight ? limitLeft * 2 - limitRight : limitRight * 2 - limitLeft : d3.max(limitLeft, limitRight));
+        }
+      })
     })
+
+    return d3.max(limitsArray);
   }
 
-  _createDomains(domains, maxLimits = {}, inpercentMaxLimits = {}, stackKey, i) {
-    const _this = this;
+  _createDomains(limit) {
+    const domains = [];
     const axisX = this.MDL.x;
 
-    if (stackKey) {
-      if (this.ui.inpercent) {
-        domains[i] = [0, Math.max(...this.sideKeys.map(s => inpercentMaxLimits[stackKey][s]))];
-      } else {
-        domains[i] = (axisX.domainMin != null && axisX.domainMax != null) ? [+axisX.domainMin, +axisX.domainMax] : [0, Math.max(...this.sideKeys.map(s => maxLimits[stackKey][s]))];
-      }
+    if (this.ui.inpercent) {
+      domains[0] = [0, limit];
     } else {
-      if (this.ui.inpercent) {
-        domains[0] = [0, Math.max(...this.sideKeys.map(s => inpercentMaxLimits[s]))];
-      } else {
-        domains[0] = axisX.scale.config.domain ? axisX.scale.domain : [0, Math.max(...this.sideKeys.map(s => maxLimits[s]))];
-      }
+      domains[0] = axisX.scale.config.domain ? axisX.scale.domain : [0, limit];
     }
+
+    return domains;
   }
 
   _updateTotal(frame) {
