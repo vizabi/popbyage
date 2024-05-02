@@ -1013,8 +1013,9 @@ class _VizabiPopByAge extends BaseComponent {
       this.overhang;
       this.sideSkip;
 
+      const filterFn = ((filterKey, filterValue) => row => row[filterKey] == filterValue)(this._getFacetEncName, this.name);
       const lockTime = this.MDL.frame.parseValue(this.ui.lockNonSelected);
-      const lockFrame = this._processData([...this.model.getDataMapByFrameValue(lockTime).rows()]);
+      const lockFrame = this._processData([...this.model.getDataMapByFrameValue(lockTime).filter(filterFn).rows()]);
       const lockTotal = this._updateTotal(lockTime);
       runInAction(() => {
         if (this.overhang && !this.sideSkip) this._addOverHangData(lockFrame);      
@@ -1076,7 +1077,8 @@ class _VizabiPopByAge extends BaseComponent {
             return r;
           });
 
-          pathDataOverhang[_i].push({d: dataOverhang});       }
+          pathDataOverhang[_i].push({d: dataOverhang});
+        }
 
         return data;
       });
