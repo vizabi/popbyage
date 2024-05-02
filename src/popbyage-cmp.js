@@ -129,7 +129,7 @@ class _VizabiPopByAge extends BaseComponent {
         const prevSbl = this.previousSibling;
         if (prevSbl) {
           const prevSblDatum = d3.select(prevSbl).datum();
-          d["x_"] = prevSblDatum.x_ + prevSblDatum.width_;
+          d["x_"] = prevSblDatum.x_ + prevSblDatum.width_ - d.width_;
         }
         // else {
         //   d["x_"] = 0;
@@ -1069,7 +1069,7 @@ class _VizabiPopByAge extends BaseComponent {
             const r = {};
             const x = frame[age.side[i].stack[stackIndex[i]][SYMBOL_KEY2]]?.x;
             const x_overhang = frame[age.side[i].stack[stackIndex[i] + 1][SYMBOL_KEY2]]?.x;
-            r.x = x && x_overhang ? _this.xScale(x) + _this.xScale(x_overhang) : x ? _this.xScale(x) : 0;
+            r.x = x && x_overhang ? _this.xScale(x) - _this.xScale(x_overhang) : x ? _this.xScale(x) : 0;
               if (_this.ui.inpercent) {
                 r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
               }
