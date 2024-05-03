@@ -20,7 +20,7 @@ const {ICON_QUESTION} = Icons;
 const SYMBOL_KEY = Symbol.for("key");
 const SYMBOL_KEY2 = Symbol.for("key2");
 const SYMBOL_STACKEDSUM = Symbol.for("stackedSum");
-const OVERHANG = "_overhang";
+const OVERHANG = "_ovh";
 
 //
 // POPBYAGE CHART COMPONENT
@@ -120,7 +120,7 @@ class _VizabiPopByAge extends BaseComponent {
         let width;
         width = _this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].x;
         d["width_"] = width ? _this.xScale(width) : 0;
-        if (_this.ui.inpercent && d[_this.STACKDIM] != OVERHANG) {
+        if (_this.ui.inpercent && d[_this.STACKDIM] != _this.OVERHANGKEY) {
           d["width_"] /= _this.total[d.i][d[_this.PREFIXEDSIDEDIM]];
         }
         return d.width_;
@@ -138,7 +138,7 @@ class _VizabiPopByAge extends BaseComponent {
       },
       _newColor(d) {
         const color = _this.cScale(_this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].color || d[_this.PREFIXEDSTACKDIM]);
-        return d[_this.STACKDIM] == OVERHANG ? d3.color(color).darker(1) : color;
+        return d[_this.STACKDIM] == _this.OVERHANGKEY ? d3.color(color).darker(1) : color;
       }
     };
 
@@ -150,6 +150,7 @@ class _VizabiPopByAge extends BaseComponent {
     this.xAxisLeft = axisSmart("bottom");
     this.yAxis = axisSmart("left");
     this.SHIFTEDAGEDIM = "s_age";
+    this.OVERHANGKEY = this.name + OVERHANG;
 
     this.element.style("overflow", this.isInFacet ? "visible" : null);
     this.DOM.svg.style("overflow", this.isInFacet ? "visible" : null);
@@ -332,12 +333,13 @@ class _VizabiPopByAge extends BaseComponent {
     const stackDim = this.STACKDIM;
     const sideDim = this.SIDEDIM;
     const inpercent = this.ui.inpercent;
+    const overhangKey = this.OVERHANGKEY;
 
     let data1, data2, x1, x2;
     for(let i = 0; i < keys.length; i = i + 2) {
       data1 = Object.assign({}, frame[keys[i]]);
       data2 = Object.assign({}, frame[keys[i + 1]]);
-      data1[stackDim] = data2[stackDim] = OVERHANG;
+      data1[stackDim] = data2[stackDim] = overhangKey;
       x1 = data1.x;
       x2 = data2.x;
       if (inpercent) {
@@ -679,7 +681,7 @@ class _VizabiPopByAge extends BaseComponent {
     if (nextStep) ageData.push(outAge);
 
     const stacks = _this.stacked ? _this.stackKeys.slice(0) : [_this.geoDomainDefaultValue];
-    if (this.overhang) stacks.push(OVERHANG);
+    if (this.overhang) stacks.push(this.OVERHANGKEY);
     const geoDomainDefaultValue = this.geoDomainDefaultValue;
     const geoDomainDimension = this.geoDomainDimension;
 
