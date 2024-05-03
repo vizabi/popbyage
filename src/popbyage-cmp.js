@@ -622,11 +622,13 @@ class _VizabiPopByAge extends BaseComponent {
     return {
       mouseover(event, d) {
         if (utils.isTouchDevice()) return;
+        if (_this._isDragging()) return;
         _this.MDL.highlighted.data.filter.set(d, JSON.stringify({color: d[_this.STACKDIM]}));
         _this._showLabel(event, d);
       },
       mouseout(event, d) {
         if (utils.isTouchDevice()) return;
+        if (_this._isDragging()) return;
         _this.MDL.highlighted.data.filter.delete(d);
       },
       click(event, d) {
