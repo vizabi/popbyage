@@ -120,7 +120,7 @@ class _VizabiPopByAge extends BaseComponent {
         let width;
         width = _this.frame[d[SYMBOL_KEY2]] && _this.frame[d[SYMBOL_KEY2]].x;
         d["width_"] = width ? _this.xScale(width) : 0;
-        if (_this.ui.inpercent) {
+        if (_this.ui.inpercent && d[_this.STACKDIM] != OVERHANG) {
           d["width_"] /= _this.total[d.i][d[_this.PREFIXEDSIDEDIM]];
         }
         return d.width_;
@@ -308,22 +308,31 @@ class _VizabiPopByAge extends BaseComponent {
      
     const stepFraction = this.MDL.frame.stepScale.domain().length == 1 ? 0 : (step - this.stepSeries[0]) % this.groupBy / this.groupBy;
 
+    const frameValue = step == undefined ? this.MDL.frame.stepScale.domain()[0] : this.MDL.frame.stepScale.invert(step);
+
+    if (this.ui.inpercent) {
+      this.total = this._updateTotal(frameValue);
+    }
+
     this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step)).rows()])
       : 
       this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip);
-    if (this.overhang && !this.sideSkip) this._addOverHangData(this.frame);
+    if (this.overhang && !this.sideSkip) this._addOverHangData(this.frame, this.total);
 
     this._updateEntities(true, 
       step ?? this.stepSeries[0],
-      step == undefined ? this.MDL.frame.stepScale.domain()[0] : this.MDL.frame.stepScale.invert(step)
+      frameValue      
     );
     this.updateBarsOpacity();
   }
 
-  _addOverHangData(frame) {
+  _addOverHangData(frame, total) {
     const keyFn = this.model.dataMap.keyFn;
     const keys = Object.keys(frame);
     const stackDim = this.STACKDIM;
+    const sideDim = this.SIDEDIM;
+    const inpercent = this.ui.inpercent;
+
     let data1, data2, x1, x2;
     for(let i = 0; i < keys.length; i = i + 2) {
       data1 = Object.assign({}, frame[keys[i]]);
@@ -331,6 +340,10 @@ class _VizabiPopByAge extends BaseComponent {
       data1[stackDim] = data2[stackDim] = OVERHANG;
       x1 = data1.x;
       x2 = data2.x;
+      if (inpercent) {
+        x1 /= total[0][data1[sideDim]];
+        x2 /= total[0][data2[sideDim]];
+      }
       data1.x = x1 > x2 ? x1 - x2 : 0;
       data2.x = x2 > x1 ? x2 - x1 : 0;
       frame[keyFn(data1)] = data1;
@@ -642,10 +655,6 @@ class _VizabiPopByAge extends BaseComponent {
     //const frameValue = this.MDL.frame.stepScale.invert(step);
     //var group_offset = this.model.marker.group_offset ? Math.abs(this.model.marker.group_offset % groupBy) : 0;
 
-    if (this.ui.inpercent) {
-      this.total = this._updateTotal(frameValue);
-    }
-
     const domain = d3.extent(this.yScale.domain());
 
     const nextStep = d3.bisectLeft(this.stepSeries, step);
@@ -955,7 +964,7 @@ class _VizabiPopByAge extends BaseComponent {
         } else {
           limitRight = limits[sideKeys[1]][step][age][stackKey ?? SYMBOL_STACKEDSUM];
           if (inpercent) limitRight /= totals[stackKey ?? SYMBOL_STACKEDSUM][step][sideKeys[1]];
-          limitsArray.push(overhang ? limitLeft > limitRight ? limitLeft * 2 - limitRight : limitRight * 2 - limitLeft : d3.max(limitLeft, limitRight));
+          limitsArray.push(Math.max(limitLeft, limitRight));
         }
       })
     })
@@ -1018,7 +1027,7 @@ class _VizabiPopByAge extends BaseComponent {
       const lockFrame = this._processData([...this.model.getDataMapByFrameValue(lockTime).filter(filterFn).rows()]);
       const lockTotal = this._updateTotal(lockTime);
       runInAction(() => {
-        if (this.overhang && !this.sideSkip) this._addOverHangData(lockFrame);      
+        if (this.overhang && !this.sideSkip) this._addOverHangData(lockFrame, lockTotal);      
         this._makeOutlines(lockFrame, lockTotal);
       });
 
@@ -1070,10 +1079,11 @@ class _VizabiPopByAge extends BaseComponent {
             const r = {};
             const x = frame[age.side[i].stack[stackIndex[i]][SYMBOL_KEY2]]?.x;
             const x_overhang = frame[age.side[i].stack[stackIndex[i] + 1][SYMBOL_KEY2]]?.x;
-            r.x = x && x_overhang ? _this.xScale(x) - _this.xScale(x_overhang) : x ? _this.xScale(x) : 0;
-              if (_this.ui.inpercent) {
-                r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
-              }
+            r.x = x ? this.xScale(x) : 0;
+            if (_this.ui.inpercent) {
+              r.x /= total[_i][age.side[i].stack[stackIndex[i]][_this.PREFIXEDSIDEDIM]];
+            }
+            r.x -= x_overhang ? this.xScale(x_overhang) : 0;
             return r;
           });
 
