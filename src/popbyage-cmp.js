@@ -315,9 +315,11 @@ class _VizabiPopByAge extends BaseComponent {
       this.total = this._updateTotal(frameValue);
     }
 
-    this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step)).rows()])
+    const facetEncName = this._getFacetEncName;
+
+    this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step), "order.order").rows()])
       : 
-      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip);
+      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v, "order.order").filter(row => row[facetEncName] === this.name).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip);
     if (this.overhang && !this.sideSkip) this._addOverHangData(this.frame, this.total);
 
     this._updateEntities(true, 
@@ -495,7 +497,7 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   get ageKeys() {
-    return  this.MDL.y.data.domain;
+    return  this.MDL.y.data.domain.toSorted(d3.ascending);
   }
 
   get sideKeys() {
@@ -1028,7 +1030,7 @@ class _VizabiPopByAge extends BaseComponent {
 
       const filterFn = ((filterKey, filterValue) => row => row[filterKey] == filterValue)(this._getFacetEncName, this.name);
       const lockTime = this.MDL.frame.parseValue(this.ui.lockNonSelected);
-      const lockFrame = this._processData([...this.model.getDataMapByFrameValue(lockTime).filter(filterFn).rows()]);
+      const lockFrame = this._processData([...this.model.getDataMapByFrameValue(lockTime, "order.order").filter(filterFn).rows()]);
       const lockTotal = this._updateTotal(lockTime);
       runInAction(() => {
         if (this.overhang && !this.sideSkip) this._addOverHangData(lockFrame, lockTotal);      
