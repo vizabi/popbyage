@@ -530,10 +530,6 @@ class _VizabiPopByAge extends BaseComponent {
     return this.isInFacet && this.parent.howManyFacets() > 1;
   }
 
-  get stacked() {
-    return this.ui.stacked && !this.MDL.color.data.isConstant;
-  }
-
   get twoSided() {
     return this.sideKeys.length > 1;
   }
@@ -684,7 +680,7 @@ class _VizabiPopByAge extends BaseComponent {
 
     if (nextStep) ageData.push(outAge);
 
-    const stacks = _this.stacked ? _this.stackKeys.slice(0) : [_this.geoDomainDefaultValue];
+    const stacks = _this.stackKeys.length ? _this.stackKeys.slice(0) : [_this.geoDomainDefaultValue];
     if (this.overhang) stacks.push(this.OVERHANGKEY);
     const geoDomainDefaultValue = this.geoDomainDefaultValue;
     const geoDomainDimension = this.geoDomainDimension;
@@ -993,13 +989,9 @@ class _VizabiPopByAge extends BaseComponent {
 
   _updateTotal(frame) {
     const total = {};
-    if (this.stacked) {
-      utils.forEach(this.stackKeys, (stackKey, i) => {
-        total[i] = this.allLimitsAndTotals.totals[stackKey][frame] ? this.allLimitsAndTotals.totals[stackKey][frame] : this._interpolateBetweenTotals(this.timeSteps, this.allLimitsAndTotals.totals[stackKey], frame);
-      });
-    } else {
-      total[0] = this.allLimitsAndTotals.totals[frame] ? this.allLimitsAndTotals.totals[frame] : this._interpolateBetweenTotals(this.timeSteps, this.allLimitsAndTotals.totals, frame);
-    }
+    utils.forEach(this.stackKeys, (stackKey, i) => {
+      total[i] = this.allLimitsAndTotals.totals[stackKey][frame] ? this.allLimitsAndTotals.totals[stackKey][frame] : this._interpolateBetweenTotals(this.timeSteps, this.allLimitsAndTotals.totals[stackKey], frame);
+    });
     return total;
   }
 
