@@ -319,7 +319,7 @@ class _VizabiPopByAge extends BaseComponent {
 
     this.frame = stepFraction == 0 ? this._processData(step == this.MDL.frame.step ? this._getDataArrayForFacet : [...this.model.getDataMapByFrameValue(this.MDL.frame.stepScale.invert(step), "order.order").rows()])
       : 
-      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v, "order.order").filter(row => row[facetEncName] === this.name).rows()), stepFraction, this._getFacetEncName, this.name, !this.sideSkip);
+      this._interpolateDiagonal(...(a=>[this.stepSeries[a],this.stepSeries[a+1]])(~~((this.MDL.frame.step - this.stepSeries[0])/ this.groupBy)).map(this.MDL.frame.stepScale.invert).map(v => this.model.getDataMapByFrameValue(v, "order.order").filter(row => row[facetEncName] === this.name).rows()), stepFraction);
     if (this.overhang && !this.sideSkip) this._addOverHangData(this.frame, this.total);
 
     this._updateEntities(true, 
@@ -380,36 +380,31 @@ class _VizabiPopByAge extends BaseComponent {
     return data;
   }
 
-  _interpolateDiagonal(pData, nData, fraction, filterKey, filterValue, sided) {
+  _processDataMapIterator(dataMapIterator) {
     const data = {};
+    for (const element of dataMapIterator) {
+      data[element[SYMBOL_KEY]] = element;
+    }
+    return data;
+  }
+
+  _interpolateDiagonal(pData, nData, fraction) {
+    const data = {};
+    const pDataObject = this._processDataMapIterator(pData);
+    const keyFn = this.model.dataMap.keyFn;
+    const ageDim = this.AGEDIM;
+    const groupBy = this.groupBy;
+
     let newRow, shiftedRow;
     for (const row of nData) {
-      if (row[filterKey] == filterValue) {
-        newRow = Object.assign({}, row);
-        data[newRow[SYMBOL_KEY]] = newRow;
-        if (sided) {
-          newRow = Object.assign({}, nData.next().value);
-          data[newRow[SYMBOL_KEY]] = newRow;
-          pData.drop(2);
-        }
-        break;
-      }
-      pData.next();
-    }
-    for (const row of nData) {
-      if (row[filterKey] !== filterValue) {
-        break;
-      }
       newRow = Object.assign({}, row);
-      shiftedRow = pData.next().value;
-      newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
+      const nAge = newRow[ageDim];
+      const pAge = +nAge - groupBy;
+      newRow[ageDim] = pAge;
+      shiftedRow = pDataObject[keyFn(newRow)];
+      if (pAge >= 0) newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
+      newRow[ageDim] = nAge;
       data[newRow[SYMBOL_KEY]] = newRow;
-      if (sided) {
-        newRow = Object.assign({}, nData.next().value);
-        shiftedRow = pData.next().value;
-        newRow.x = shiftedRow.x + (newRow.x - shiftedRow.x) * fraction;
-        data[newRow[SYMBOL_KEY]] = newRow;  
-      }
     }
     return data;
   }
@@ -497,7 +492,7 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   get ageKeys() {
-    return  this.MDL.y.data.domain.toSorted(d3.ascending);
+    return  this.MDL.y.data.domain.map(d => +d).toSorted(d3.ascending);
   }
 
   get sideKeys() {
