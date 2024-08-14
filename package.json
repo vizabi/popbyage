@@ -1,6 +1,6 @@
 {
   "name": "@vizabi/popbyage",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "description": "Vizabi age pyrmid",
   "scripts": {
     "prepublishOnly": "npm run build",
