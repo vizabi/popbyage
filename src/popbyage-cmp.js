@@ -181,7 +181,7 @@ class _VizabiPopByAge extends BaseComponent {
   }
 
   draw() {
-    this.localise = this.services.locale.auto(this.MDL.frame.interval);
+    this.localise = this.services.locale.auto({interval: this.MDL.frame.interval});
 
     this.yAxis.tickFormat(this.localise);
     this.xAxis.tickFormat(this.localise);
