@@ -205,7 +205,7 @@ class _VizabiPopByAge extends BaseComponent {
     //this.addReaction(this._updateLimits);
     this.addReaction(this._updateSideTitles);
     this.addReaction(this._updateMaxValues);
-    this.addReaction(this.updateSize);
+    this.addReaction(this.updateSize, {throttle_ms: 50});
     this.addReaction(this._updateForecastOverlay);
     //this.addReaction(this._updateStepSeries);
     this.addReaction(this.drawData);
