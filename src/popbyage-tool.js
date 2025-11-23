@@ -21,12 +21,15 @@ import { Side } from "./dialogs/side/side.js"; Side;
 export default class PopByAge extends BaseComponent {
 
   constructor(config){
-    const fullMarker = config.model.markers.pyramid;
-      
+    
+    const fullMarker = config.model.markers?.pyramid;
+    const fullMarkerLegend = config.model.markers?.legend;
+    config.Vizabi.utils.applyDefaults(fullMarker?.config || {}, PopByAge.DEFAULT_MODEL.pyramid);   
+    config.Vizabi.utils.applyDefaults(fullMarkerLegend?.config || {}, PopByAge.DEFAULT_MODEL.legend);  
+
     const frameType = config.Vizabi.stores.encodings.modelTypes.frame;
     const { marker, splashMarker } = frameType.splashMarker(fullMarker);
-    config.model.markers.pyramid = marker;
-
+    
     config.name = "popbyage";
 
     config.subcomponents = [{
@@ -103,17 +106,185 @@ export default class PopByAge extends BaseComponent {
   }
 }
 PopByAge.DEFAULT_UI = {
-  chart: {
-    mode: "smallMultiples",
-    opacityHighlightDim: 0.1,
-    opacitySelectDim: 0.3,
-    opacityRegular: 1,
-    stacked: true,
-    inpercent: false,
-    flipSides: true,
-    lockActive: true,
-    lockNonSelected: 0
+  "locale": { "id": "en", "shortNumberFormat": true },
+  "layout": { "projector": false },
+
+  "buttons": {
+    "buttons": ["colors", "markercontrols", "lock", "sided","inpercent", "moreoptions", "sidebarcollapse", "fullscreen"]
   },
+  "dialogs": {
+    "dialogs": {
+      "popup": ["timedisplay", "colors", "markercontrols", "moreoptions"],
+      "sidebar": ["timedisplay", "colors", "markercontrols", "grouping"],
+      "moreoptions": ["opacity", "speed", "grouping", "colors", "side", "presentation", "about"],
+    },
+    "markercontrols": {
+      "disableSlice": true,
+      "disableAddRemoveGroups": true,
+      "primaryDim": null,
+      "drilldown": null,
+      "shortcutForSwitch": false,
+      "shortcutForSwitch_allow": null
+    }
+  },
+  "marker-contextmenu": {
+    "primaryDim": null,
+    "drilldown": null,
+  },
+  "time-slider": {
+    "show_value": false
+  },
+  "chart": {
+    "mode": "smallMultiples",
+    "stacked": true,
+    "inpercent": true,
+    "flipSides": true,
+    "lockActive": true,
+    "lockNonSelected": 0,
+    "showForecast": true,
+    "showForecastOverlay": false,
+    "pauseBeforeForecast": false,
+    "endBeforeForecast": null, //value like "2022", auto-resolved to current time minus one frame step
+    "overhang": true,
+    "opacityHighlight": 1.0,
+    "opacitySelect": 1.0,
+    "opacityHighlightDim": 0.1,
+    "opacitySelectDim": 0.3,
+    "opacityRegular": 1,
+  },
+  "data-warning": {
+    "enable": false,
+    "margin": {
+      "LARGE": { "bottom": 90 },
+      "MEDIUM": { "bottom": 70 },
+      "SMALL": { "bottom": 50 }
+    }
+  },
+  "tree-menu": {
+    "showDataSources": false,
+    "folderStrategyByDataset": {}
+  }
+};
+
+PopByAge.DEFAULT_MODEL = {
+  "pyramid": {
+    "requiredEncodings": ["x"],
+    "encoding": {
+      "show": {
+        "modelType": "selection",
+      },
+      "selected": {
+        "modelType": "selection"
+      },
+      "highlighted": {
+        "modelType": "selection"
+      },
+      "x": { "data": { } },
+      "y": {
+        "data": { },
+        "scale": { "type": "linear" }
+      },
+      "aggregate": {
+        "modelType": "aggregate",
+        "data": { "ref": "markers.pyramid.config.encoding.x.data" },
+        "measures": ["x"],
+        "grouping": {
+          //example for your data
+          //  "age": { "grouping": 1 } 
+        }
+      },
+      "order": {
+        "modelType": "order",
+        "direction": "asc",
+        "data": { "ref": "markers.pyramid.config.encoding.y.data" }
+      },
+      "orderFacets": {
+        "modelType": "order",
+        //example for your data:
+        //  "direction": { "ref": "markers.pyramid.data.filter.config.dimensions.geo.$or.0.geo.$in" },
+        //  "data": { "ref": "markers.pyramid.encoding.facet_column.data" }
+      },
+      "label": {
+        "data": {
+          "modelType": "entityPropertyDataConfig"
+        }
+      },
+      "frame": {
+        //interpolate: false //some possible exotic customisation :)
+        "modelType": "frame",
+        "playbackSteps": 1, //changes w aggregation
+        "splash": true
+      },
+      "color": {
+        "data": { "constant": "_default" },
+        "scale": {
+          "modelType": "color"
+        }
+      },
+      "repeat": {
+        "modelType": "repeat",
+        "allowEnc": ["x"]
+      },
+      "side": {
+        "data": {
+          //set in custom config like so:
+          "constant": "true"
+          //alternatively: 
+          // "space": ["gender"],
+          // "concept": "gender"
+        },
+        //set in custom config like so:
+        // "defaultConcept": "gender"
+      },
+      "facet_column": {
+        "data": {
+          "modelType": "entityMembershipDataConfig",
+          //set space and concept like so:
+          //  "space": ["geo"],
+          //  "constant": null,
+          //  "concept": "geo",
+          //alternatively, constant="none" or magic concept="is--" with possible exceptions
+          //  "concept": "world_4region"
+          //  "exceptions": {"is--country": "geo"}
+        }
+      },
+    }
+  },
+  "legend": {
+    "data": {
+      "ref": {
+        "transform": "entityConceptSkipFilter",
+        "path": "markers.pyramid.encoding.color"
+      }
+    },
+    "encoding": {
+      "color": {
+        "data": {
+          "concept": { "ref": "markers.pyramid.encoding.color.data.concept" },
+          "constant": { "ref": "markers.pyramid.encoding.color.data.constant" }
+        },
+        "scale": {
+          "modelType": "color",
+          "palette": { "ref": "markers.pyramid.encoding.color.scale.palette" },
+          "domain": null,
+          "range": null,
+          "type": null,
+          "zoomed": null,
+          "zeroBaseline": false,
+          "clamp": false,
+          "allowedTypes": null
+        }
+        //"scale": { "ref": "markers.pyramid.encoding.color.scale" }
+      },
+      "name": { "data": { } },
+      "order": {
+        "modelType": "order",
+        "direction": "asc",
+        "data": { }
+      },
+      "map": { "data": { } }
+    }
+  }
 };
 
 PopByAge.versionInfo = { version: __VERSION, build: __BUILD, package: __PACKAGE_JSON_FIELDS, sharedComponents: versionInfo};
