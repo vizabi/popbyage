@@ -120,6 +120,7 @@ PopByAge.DEFAULT_UI = {
     },
     "markercontrols": {
       "disableSlice": true,
+      "disableSwitch": true,
       "disableAddRemoveGroups": true,
       "primaryDim": null,
       "drilldown": null,

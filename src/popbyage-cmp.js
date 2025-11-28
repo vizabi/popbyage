@@ -475,7 +475,8 @@ class _VizabiPopByAge extends BaseComponent {
         this.element.classed("vzb-chart-removepreview", false);
       })
       .on("click", () => {
-        this.model.data.filter.delete(this.name);
+        const primaryDim = this.model.data.space[0];
+        this.model.data.filter.deleteUsingLimitedStructure({dim: primaryDim, key: this.name, prop: primaryDim});
       });
 
 
