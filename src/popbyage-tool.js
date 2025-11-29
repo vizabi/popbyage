@@ -277,13 +277,23 @@ PopByAge.DEFAULT_MODEL = {
         }
         //"scale": { "ref": "markers.pyramid.encoding.color.scale" }
       },
-      "name": { "data": { } },
+      "name": { 
+        "data": {
+          "concept": {"filter": { "concept": { "$in": ["name"]} } }
+        }
+      },
       "order": {
         "modelType": "order",
         "direction": "asc",
-        "data": { }
+        "data": {
+          "concept": {"filter": { "concept": { "$in": ["rank"]} } }
+        }
       },
-      "map": { "data": { } }
+      "map": { 
+        "data": {
+          "concept": {"filter": { "concept": { "$in": ["shape_lores_svg", "shape", "svg"]} } }
+        }
+      }
     }
   }
 };
