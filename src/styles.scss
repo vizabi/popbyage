@@ -1,7 +1,5 @@
-@import "../node_modules/bourbon/core/_bourbon.scss";
-@import "../node_modules/@vizabi/shared-components/src/styles/vizabi-old/_mixins.scss";
-@import "../node_modules/@vizabi/shared-components/src/styles/vizabi-old/_common.scss";
-@import "../node_modules/@vizabi/shared-components/src/styles/vizabi-old/_chart.scss";
+@use "../node_modules/@vizabi/shared-components/src/styles/common" as *;
+@use "sass:meta";
 
 .vzb-tool {
 
@@ -259,7 +257,7 @@
   .vzb-tool-timeslider .vzb-timeslider .vzb-ts-slider-wrapper .vzb-ts-slider .vzb-ts-slider-select {
     opacity: 0.15;
   }
-
-  @import 'dialogs/grouping/_grouping.scss';
-  @import 'dialogs/side/_side.scss';
 }
+
+@include meta.load-css('dialogs/grouping/_grouping.scss');
+@include meta.load-css('dialogs/side/_side.scss');
